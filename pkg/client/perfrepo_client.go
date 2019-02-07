@@ -70,9 +70,18 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 
 // GetTest returns an existing test by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
-	getTestURL := fmt.Sprintf("%s/test/id/%d", c.url, id)
+	url := fmt.Sprintf("%s/test/id/%d", c.url, id)
+	return c.getTestByURL(url)
+}
 
-	req, err := c.httpGet(getTestURL)
+// GetTestByUID returns an existing test by UID identifier or nil if there's an error
+func (c *PerfRepoClient) GetTestByUID(uid string) (*apis.Test, error) {
+	url := fmt.Sprintf("%s/test/uid/%s", c.url, uid)
+	return c.getTestByURL(url)
+}
+
+func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
+	req, err := c.httpGet(url)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +95,7 @@ func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Test with given id %d doesn't exist", id)
+			return nil, fmt.Errorf("Test with given location %s doesn't exist", url)
 		}
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
