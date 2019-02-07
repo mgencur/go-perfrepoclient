@@ -3,8 +3,8 @@
 package e2e
 
 import (
-	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/PerfCake/go-perfrepoclient/pkg/client"
@@ -46,5 +46,12 @@ func TestCreateGetDeleteTestObject(t *testing.T) {
 		//TODO: Verify testOut.TestExecutions are nil
 		t.Fatalf("The returned test: %+v does not match the original test %+v", testOut, testIn)
 	}
-	fmt.Printf("Test: %+v", testOut)
+
+	if err := testClient.DeleteTest(id); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if _, err = testClient.GetTest(id); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+		t.Fatalf("Test not deleted")
+	}
 }

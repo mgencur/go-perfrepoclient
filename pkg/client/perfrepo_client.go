@@ -51,15 +51,11 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 		return 0, err
 	}
 
-	fmt.Printf("Request: %+v\n", req)
-
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
-
-	fmt.Printf("Response: %+v\n", resp)
 
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.New(resp.Status)
@@ -81,15 +77,11 @@ func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Request: %+v\n", req)
-
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	fmt.Printf("Response: %+v\n", resp)
 
 	switch resp.StatusCode {
 	case http.StatusOK:
@@ -108,6 +100,28 @@ func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 	}
 }
 
+// DeleteTest deletes the given test from the PerfRepo database. Returns nil when the request
+// succeeds.
+func (c *PerfRepoClient) DeleteTest(id int64) error {
+	deleteTestURL := fmt.Sprintf("%s/test/id/%d", c.url, id)
+
+	req, err := c.httpDelete(deleteTestURL)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("Failed to delete test with id %d: %v", id, resp.Status)
+	}
+	return nil
+}
+
 func (c *PerfRepoClient) httpGet(url string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -124,5 +138,14 @@ func (c *PerfRepoClient) httpPost(url string, body []byte) (*http.Request, error
 	}
 	req.Header.Add(authHeader, "Basic "+c.auth)
 	req.Header.Add(contentTypeHeader, "text/xml")
+	return req, nil
+}
+
+func (c *PerfRepoClient) httpDelete(url string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add(authHeader, "Basic "+c.auth)
 	return req, nil
 }
