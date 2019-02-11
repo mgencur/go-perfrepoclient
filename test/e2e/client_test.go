@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/PerfCake/go-perfrepoclient/pkg/apis"
 	"github.com/PerfCake/go-perfrepoclient/pkg/client"
 	"github.com/PerfCake/go-perfrepoclient/test"
 )
@@ -82,4 +83,110 @@ func TestGetTestByUID(t *testing.T) {
 	if err := testClient.DeleteTest(id); err != nil {
 		t.Fatal(err.Error())
 	}
+}
+
+func TestCreateGetDeleteTestExecution(t *testing.T) {
+	testIn := test.Test("test1")
+
+	testID, err := testClient.CreateTest(testIn)
+
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+
+	testExecIn := test.TestExecution(testID)
+
+	testExecID, err := testClient.CreateTestExecution(testExecIn)
+
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+
+	testExecOut, err := testClient.GetTestExecution(testExecID)
+
+	if err != nil {
+		t.Fatal("Failed to get TestExecution", err.Error())
+	}
+
+	if testExecOut.ID != testExecID ||
+		testExecOut.Name != testExecIn.Name ||
+		testExecOut.Started.String() != testExecIn.Started.String() ||
+		!paramsEqual(testExecOut, testExecIn) ||
+		!tagsEqual(testExecOut, testExecIn) ||
+		!metricsEqual(testExecOut, testExecIn, "metric1", "metric2") {
+		t.Fatalf("The returned test execution: %+v does not match the original %+v", testExecOut, testExecIn)
+		//TODO: Verify multimetric values as well
+	}
+
+	if err := testClient.DeleteTestExecution(testExecID); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+		t.Fatalf("Test execution not deleted")
+	}
+
+	if err := testClient.DeleteTest(testID); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func paramsEqual(actual, expected *apis.TestExecution) bool {
+	for i, p := range expected.Parameters {
+		if actual.Parameters[i].Name != p.Name || actual.Parameters[i].Value != p.Value {
+			return false
+		}
+	}
+	return true
+}
+
+func tagsEqual(actual, expected *apis.TestExecution) bool {
+	for i, tag := range expected.Tags {
+		if actual.Tags[i].Name != tag.Name {
+			return false
+		}
+	}
+	return true
+}
+
+func metricsEqual(actual, expected *apis.TestExecution, metricsToCompare ...string) bool {
+	for i, v := range expected.Values {
+		if isIncluded(v.MetricName, metricsToCompare...) {
+			if actual.Values[i].MetricName != v.MetricName ||
+				actual.Values[i].Result != v.Result ||
+				!valueParamsEqual(actual.Values[i], v) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isIncluded(element string, inList ...string) bool {
+	for _, m := range inList {
+		if m == element {
+			return true
+		}
+	}
+	return false
+}
+
+func valuesEqual(actual, expected *apis.TestExecution) bool {
+	for i, v := range expected.Values {
+		if actual.Values[i].MetricName != v.MetricName ||
+			actual.Values[i].Result != v.Result ||
+			!valueParamsEqual(actual.Values[i], v) {
+			return false
+		}
+	}
+	return true
+}
+
+func valueParamsEqual(actual, expected apis.Value) bool {
+	for i, p := range expected.Parameters {
+		if actual.Parameters[i].Name != p.Name || actual.Parameters[i].Value != p.Value {
+			return false
+		}
+	}
+	return true
 }

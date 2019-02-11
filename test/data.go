@@ -52,14 +52,6 @@ func Test(name string) *apis.Test {
 // once is used to initialize r
 var once sync.Once
 
-func initSeed() func() {
-	return func() {
-		seed := time.Now().UTC().UnixNano()
-		r = rand.New(rand.NewSource(seed))
-		rndMutex = &sync.Mutex{}
-	}
-}
-
 // RandomString will generate a random string.
 func RandomString() string {
 	once.Do(initSeed())
@@ -70,4 +62,70 @@ func RandomString() string {
 	}
 	rndMutex.Unlock()
 	return string(result)
+}
+
+func initSeed() func() {
+	return func() {
+		seed := time.Now().UTC().UnixNano()
+		r = rand.New(rand.NewSource(seed))
+		rndMutex = &sync.Mutex{}
+	}
+}
+
+// TestExecution creates a new TestExecution object referencing given test via testId
+func TestExecution(testId int64) *apis.TestExecution {
+	salt := RandomString()
+	return &apis.TestExecution{
+		TestID:  testId,
+		Name:    "execution1" + salt,
+		Started: apis.JaxbTime{time.Now()},
+		Parameters: []apis.TestExecutionParameter{
+			{
+				Name:  "param1",
+				Value: "value1",
+			},
+			{
+				Name:  "param2",
+				Value: "value2",
+			},
+		},
+		Tags: []apis.Tag{
+			{
+				Name: "tag1",
+			},
+			{
+				Name: "tag2",
+			},
+		},
+		Values: []apis.Value{
+			{
+				MetricName: "metric1",
+				Result:     12.0,
+			},
+			{
+				MetricName: "metric2",
+				Result:     8.0,
+			},
+			{
+				MetricName: "multimetric",
+				Result:     20.0,
+				Parameters: []apis.ValueParameter{
+					{
+						Name:  "client",
+						Value: "1",
+					},
+				},
+			},
+			{
+				MetricName: "multimetric",
+				Result:     40.0,
+				Parameters: []apis.ValueParameter{
+					{
+						Name:  "client",
+						Value: "2",
+					},
+				},
+			},
+		},
+	}
 }
