@@ -113,7 +113,9 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 		testExecOut.Started.String() != testExecIn.Started.String() ||
 		!paramsEqual(testExecOut, testExecIn) ||
 		!tagsEqual(testExecOut, testExecIn) ||
-		!metricsEqual(testExecOut, testExecIn, "metric1", "metric2") {
+		!metricsEqual(testExecOut, testExecIn, "metric1", "metric2") ||
+		firstMetricByParam(testExecOut, "multimetric", apis.ValueParameter{Name: "client", Value: "1"}) != 20.0 ||
+		firstMetricByParam(testExecOut, "multimetric", apis.ValueParameter{Name: "client", Value: "2"}) != 40.0 {
 		t.Fatalf("The returned test execution: %+v does not match the original %+v", testExecOut, testExecIn)
 		//TODO: Verify multimetric values as well
 	}
@@ -189,4 +191,17 @@ func valueParamsEqual(actual, expected apis.Value) bool {
 		}
 	}
 	return true
+}
+
+func firstMetricByParam(testExec *apis.TestExecution, metricName string, param apis.ValueParameter) float64 {
+	for _, v := range testExec.Values {
+		if v.MetricName == metricName {
+			for _, p := range v.Parameters {
+				if p == param {
+					return v.Result
+				}
+			}
+		}
+	}
+	return 0.0
 }
