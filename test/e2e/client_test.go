@@ -114,10 +114,12 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 		!paramsEqual(testExecOut, testExecIn) ||
 		!tagsEqual(testExecOut, testExecIn) ||
 		!metricsEqual(testExecOut, testExecIn, "metric1", "metric2") ||
-		firstMetricByParam(testExecOut, "multimetric", apis.ValueParameter{Name: "client", Value: "1"}) != 20.0 ||
-		firstMetricByParam(testExecOut, "multimetric", apis.ValueParameter{Name: "client", Value: "2"}) != 40.0 {
-		t.Fatalf("The returned test execution: %+v does not match the original %+v", testExecOut, testExecIn)
-		//TODO: Verify multimetric values as well
+		firstMetricByParam(testExecOut, "multimetric",
+			apis.ValueParameter{Name: "client", Value: "1"}) != 20.0 ||
+		firstMetricByParam(testExecOut, "multimetric",
+			apis.ValueParameter{Name: "client", Value: "2"}) != 40.0 {
+		t.Fatalf("The returned test execution: %+v does not match the original %+v",
+			testExecOut, testExecIn)
 	}
 
 	if err := testClient.DeleteTestExecution(testExecID); err != nil {
@@ -126,6 +128,28 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 
 	if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
 		t.Fatalf("Test execution not deleted")
+	}
+
+	if err := testClient.DeleteTest(testID); err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func TestCreateInvalidTestExecution(t *testing.T) {
+	testIn := test.Test("test1")
+
+	testID, err := testClient.CreateTest(testIn)
+
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+
+	testExecIn := test.InvalidTestExecution(testID)
+
+	testExecID, err := testClient.CreateTestExecution(testExecIn)
+
+	if err == nil || testExecID != 0 {
+		t.Fatal("Invalid test execution accepted")
 	}
 
 	if err := testClient.DeleteTest(testID); err != nil {

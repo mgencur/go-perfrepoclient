@@ -59,7 +59,7 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.New(resp.Status)
+		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)

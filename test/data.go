@@ -77,7 +77,7 @@ func TestExecution(testId int64) *apis.TestExecution {
 	salt := RandomString()
 	return &apis.TestExecution{
 		TestID:  testId,
-		Name:    "execution1" + salt,
+		Name:    "execution" + salt,
 		Started: apis.JaxbTime{time.Now()},
 		Parameters: []apis.TestExecutionParameter{
 			{
@@ -125,6 +125,27 @@ func TestExecution(testId int64) *apis.TestExecution {
 						Value: "2",
 					},
 				},
+			},
+		},
+	}
+}
+
+// InvalidTestExecution creates a TestExecution that has multiple metrics with same
+// name but without any parameters that would differentiate them
+func InvalidTestExecution(testId int64) *apis.TestExecution {
+	salt := RandomString()
+	return &apis.TestExecution{
+		TestID:  testId,
+		Name:    "execution" + salt,
+		Started: apis.JaxbTime{time.Now()},
+		Values: []apis.Value{
+			{
+				MetricName: "multimetric",
+				Result:     20.0,
+			},
+			{
+				MetricName: "multimetric",
+				Result:     40.0,
 			},
 		},
 	}
