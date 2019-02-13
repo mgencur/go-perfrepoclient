@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 const (
 	authHeader        = "Authorization"
 	contentTypeHeader = "Content-Type"
+	targetFileHeader  = "filename"
 )
 
 // PerfRepoClient has methods for communicating with a remote PerfRepo instance via
@@ -216,6 +218,61 @@ func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
 		return fmt.Errorf("Failed to delete test execution with id %d: %v", id, resp.Status)
 	}
 	return nil
+}
+
+// CreateAttachment creates a new attachment for a TestExecution identified by its ID.
+// Returns an ID of the attachment itself or error when the operation failed
+func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis.Attachment) (int64, error) {
+	createAttachmentURL := fmt.Sprintf("%s/testExecution/%d/addAttachment", c.url, testExecutionID)
+
+	req, err := http.NewRequest(http.MethodPost, createAttachmentURL, attachment.File)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Add(authHeader, "Basic "+c.auth)
+	req.Header.Add(contentTypeHeader, attachment.ContentType)
+	req.Header.Add(targetFileHeader, attachment.TargetFileName)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return 0, errors.Wrap(err, "HTTP request failed")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
+	}
+	body, _ := ioutil.ReadAll(resp.Body)
+	res, err := strconv.ParseInt(string(body), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return res, nil
+}
+
+// GetAttachment returns the attachment with given ID in the form of io.Reader or
+// error when the operation failed.
+func (c *PerfRepoClient) GetAttachment(id int64) (io.ReadCloser, error) {
+	url := fmt.Sprintf("%s/testExecution/attachment/%d", c.url, id)
+	req, err := c.httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if resp.ContentLength == 0 {
+			return nil, fmt.Errorf("Attachment with given location %s doesn't exist", url)
+		}
+		return resp.Body, err
+	default:
+		return nil, errors.New(resp.Status)
+	}
 }
 
 func (c *PerfRepoClient) httpGet(url string) (*http.Request, error) {

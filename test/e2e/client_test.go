@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -158,6 +159,111 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 
 	if err == nil || testExecID != 0 {
 		t.Fatal("Invalid test execution accepted")
+	}
+}
+
+func TestUpdateTestExecution(t *testing.T) {
+	testIn := test.Test("test1")
+
+	testID, err := testClient.CreateTest(testIn)
+
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+	defer func(id int64) {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+	}(testID)
+
+	testExecIn := test.TestExecution(testID)
+
+	testExecID, err := testClient.CreateTestExecution(testExecIn)
+
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+	defer func(id int64) {
+		if err := testClient.DeleteTestExecution(testExecID); err != nil {
+			t.Fatal(err.Error())
+		}
+		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+			t.Fatalf("Test execution not deleted")
+		}
+	}(testExecID)
+
+	testExecOut, err := testClient.GetTestExecution(testExecID)
+
+	if err != nil {
+		t.Fatal("Failed to get TestExecution", err.Error())
+	}
+
+	if testExecOut.ID != testExecID ||
+		testExecOut.Name != testExecIn.Name ||
+		testExecOut.Started.String() != testExecIn.Started.String() ||
+		!paramsEqual(testExecOut, testExecIn) ||
+		!tagsEqual(testExecOut, testExecIn) ||
+		!metricsEqual(testExecOut, testExecIn, "metric1", "metric2") ||
+		firstMetricByParam(testExecOut, "multimetric",
+			apis.ValueParameter{Name: "client", Value: "1"}) != 20.0 ||
+		firstMetricByParam(testExecOut, "multimetric",
+			apis.ValueParameter{Name: "client", Value: "2"}) != 40.0 {
+		t.Fatalf("The returned test execution: %+v does not match the original %+v",
+			testExecOut, testExecIn)
+	}
+}
+
+func TestCreateAttachment(t *testing.T) {
+	testIn := test.Test("test1")
+
+	testID, err := testClient.CreateTest(testIn)
+
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+	defer func(id int64) {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+	}(testID)
+
+	testExecIn := test.TestExecution(testID)
+
+	testExecID, err := testClient.CreateTestExecution(testExecIn)
+
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+	defer func(id int64) {
+		if err := testClient.DeleteTestExecution(testExecID); err != nil {
+			t.Fatal(err.Error())
+		}
+		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+			t.Fatalf("Test execution not deleted")
+		}
+	}(testExecID)
+
+	const attachmentText = "this is a juicy test file"
+	att := apis.Attachment{
+		File:           strings.NewReader(attachmentText),
+		ContentType:    "text/plain",
+		TargetFileName: "attachment1.txt",
+	}
+	attID, err := testClient.CreateAttachment(testExecID, att)
+	if err != nil {
+		t.Fatal("Failed to create Attachment", err.Error())
+	}
+	bodyReader, err := testClient.GetAttachment(attID)
+	if err != nil {
+		t.Fatal("Failed to get Attachment", err.Error())
+	}
+	defer bodyReader.Close()
+	bodyBytes, err := ioutil.ReadAll(bodyReader)
+	if err != nil {
+		t.Fatal("Unable to read attachment", err.Error())
+	}
+	if string(bodyBytes) != attachmentText {
+		t.Fatal("Unexpected attachment body")
 	}
 }
 

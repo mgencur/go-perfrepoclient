@@ -2,6 +2,7 @@ package apis
 
 import (
 	"encoding/xml"
+	"io"
 	"time"
 )
 
@@ -67,6 +68,13 @@ type ValueParameter struct {
 
 type JaxbTime struct {
 	time.Time
+}
+
+// Holds data related to an attachment for TestExecution
+type Attachment struct {
+	File           io.Reader // data
+	ContentType    string    // MimeType of the data
+	TargetFileName string    // name under which the attachment will be stored in PerfRepo
 }
 
 // UnmarshalXMLAttr implements custom unmarshalling of date/time attribute compatible with default JAXB format
