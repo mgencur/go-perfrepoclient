@@ -150,3 +150,22 @@ func InvalidTestExecution(testId int64) *apis.TestExecution {
 		},
 	}
 }
+
+// Report creates a new Report object with the given name
+func Report(name string, username string) *apis.Report {
+	salt := RandomString()
+	return &apis.Report{
+		Name: name + salt,
+		Type: "TestReport",
+		User: username,
+		Properties: []apis.Entry{
+			{
+				Key: "property1",
+				Value: apis.ReportProperty{
+					Name:  "name",
+					Value: "value",
+				},
+			},
+		},
+	}
+}

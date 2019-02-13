@@ -66,6 +66,38 @@ type ValueParameter struct {
 	Value string `xml:"value,attr"`
 }
 
+type Report struct {
+	XMLName     xml.Name     `xml:"report"`
+	ID          int64        `xml:"id,attr,omitempty"`
+	Name        string       `xml:"name,attr"`
+	Type        string       `xml:"type,attr"`
+	User        string       `xml:"user,attr"`
+	Permissions []Permission `xml:"permissions>permission,omitempty"`
+	Properties  []Entry      `xml:"properties>entry,omitempty"`
+	//TODO: Convert Properties to Map and implement custom marshalling for Maps
+}
+
+type Permission struct {
+	XMLName     xml.Name `xml:"permission"`
+	ID          int64    `xml:"id,omitempty"`
+	GroupID     int64    `xml:"group-id,omitempty"`
+	ReportID    int64    `xml:"report-id,omitempty"`
+	UserID      int64    `xml:"user-id,omitempty"`
+	AccessType  string   `xml:"access-type,omitempty"`
+	AccessLevel string   `xml:"access-level,omitempty"`
+}
+
+type Entry struct {
+	Key   string         `xml:"key,omitempty"`
+	Value ReportProperty `xml:"value,omitempty"`
+}
+
+type ReportProperty struct {
+	ID    int64  `xml:"id,attr,omitempty"`
+	Name  string `xml:"name,attr"`
+	Value string `xml:"value,attr"`
+}
+
 type JaxbTime struct {
 	time.Time
 }

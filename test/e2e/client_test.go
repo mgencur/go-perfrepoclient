@@ -67,11 +67,11 @@ func TestGetTestByUID(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
-	defer func(id int64) {
+	defer func() {
 		if err := testClient.DeleteTest(id); err != nil {
 			t.Fatal(err.Error())
 		}
-	}(id)
+	}()
 
 	testOut, err := testClient.GetTestByUID(testIn.UID)
 	if err != nil {
@@ -96,11 +96,11 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
-	defer func(id int64) {
-		if err := testClient.DeleteTest(id); err != nil {
+	defer func() {
+		if err := testClient.DeleteTest(testID); err != nil {
 			t.Fatal(err.Error())
 		}
-	}(testID)
+	}()
 
 	testExecIn := test.TestExecution(testID)
 
@@ -109,14 +109,14 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create TestExecution", err.Error())
 	}
-	defer func(id int64) {
+	defer func() {
 		if err := testClient.DeleteTestExecution(testExecID); err != nil {
 			t.Fatal(err.Error())
 		}
 		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
 			t.Fatalf("Test execution not deleted")
 		}
-	}(testExecID)
+	}()
 
 	testExecOut, err := testClient.GetTestExecution(testExecID)
 
@@ -147,11 +147,11 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
-	defer func(id int64) {
-		if err := testClient.DeleteTest(id); err != nil {
+	defer func() {
+		if err := testClient.DeleteTest(testID); err != nil {
 			t.Fatal(err.Error())
 		}
-	}(testID)
+	}()
 
 	testExecIn := test.InvalidTestExecution(testID)
 
@@ -170,11 +170,11 @@ func TestUpdateTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
-	defer func(id int64) {
-		if err := testClient.DeleteTest(id); err != nil {
+	defer func() {
+		if err := testClient.DeleteTest(testID); err != nil {
 			t.Fatal(err.Error())
 		}
-	}(testID)
+	}()
 
 	testExecIn := test.TestExecution(testID)
 
@@ -183,14 +183,14 @@ func TestUpdateTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create TestExecution", err.Error())
 	}
-	defer func(id int64) {
+	defer func() {
 		if err := testClient.DeleteTestExecution(testExecID); err != nil {
 			t.Fatal(err.Error())
 		}
 		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
 			t.Fatalf("Test execution not deleted")
 		}
-	}(testExecID)
+	}()
 
 	testExecOut, err := testClient.GetTestExecution(testExecID)
 
@@ -221,11 +221,11 @@ func TestCreateAttachment(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
-	defer func(id int64) {
-		if err := testClient.DeleteTest(id); err != nil {
+	defer func() {
+		if err := testClient.DeleteTest(testID); err != nil {
 			t.Fatal(err.Error())
 		}
-	}(testID)
+	}()
 
 	testExecIn := test.TestExecution(testID)
 
@@ -234,14 +234,14 @@ func TestCreateAttachment(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create TestExecution", err.Error())
 	}
-	defer func(id int64) {
+	defer func() {
 		if err := testClient.DeleteTestExecution(testExecID); err != nil {
 			t.Fatal(err.Error())
 		}
 		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
 			t.Fatalf("Test execution not deleted")
 		}
-	}(testExecID)
+	}()
 
 	const attachmentText = "this is a juicy test file"
 	att := apis.Attachment{
@@ -264,6 +264,39 @@ func TestCreateAttachment(t *testing.T) {
 	}
 	if string(bodyBytes) != attachmentText {
 		t.Fatal("Unexpected attachment body")
+	}
+}
+
+func TestCreateGetDeleteReport(t *testing.T) {
+	reportIn := test.Report("report", perfRepoUser)
+
+	id, err := testClient.CreateReport(reportIn)
+
+	if err != nil {
+		t.Fatal("Failed to create Report", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteReport(id); err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if _, err = testClient.GetReport(id); err == nil {
+			// https://github.com/PerfCake/PerfRepo/issues/93
+			//!strings.Contains(err.Error(), "doesn't exist") {
+			t.Fatalf("Report not deleted: %v", err)
+		}
+	}()
+
+	reportOut, err := testClient.GetReport(id)
+	if err != nil {
+		t.Fatal("Failed to get Report", err.Error())
+	}
+
+	if reportOut.Name != reportIn.Name ||
+		reportOut.Type != reportIn.Type ||
+		len(reportOut.Properties) != len(reportIn.Properties) ||
+		!propertiesEqual(reportOut, reportIn, "property1") {
+		t.Fatalf("The returned report: %+v does not match the original %+v", reportOut, reportIn)
 	}
 }
 
@@ -338,4 +371,16 @@ func firstMetricByParam(testExec *apis.TestExecution, metricName string, param a
 		}
 	}
 	return 0.0
+}
+
+func propertiesEqual(actual, expected *apis.Report, propsToCompare ...string) bool {
+	for i, p := range expected.Properties {
+		if isIncluded(p.Key, propsToCompare...) {
+			if actual.Properties[i].Value.Name != p.Value.Name ||
+				actual.Properties[i].Value.Value != p.Value.Value {
+				return false
+			}
+		}
+	}
+	return true
 }
