@@ -33,6 +33,15 @@ func TestCreateGetDeleteTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
+	defer func() {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if _, err = testClient.GetTest(id); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+			t.Fatalf("Test not deleted")
+		}
+	}()
 
 	testOut, err := testClient.GetTest(id)
 	if err != nil {
@@ -47,14 +56,6 @@ func TestCreateGetDeleteTest(t *testing.T) {
 		//TODO: Verify testOut.TestExecutions are nil
 		t.Fatalf("The returned test: %+v does not match the original test %+v", testOut, testIn)
 	}
-
-	if err := testClient.DeleteTest(id); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	if _, err = testClient.GetTest(id); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
-		t.Fatalf("Test not deleted")
-	}
 }
 
 func TestGetTestByUID(t *testing.T) {
@@ -65,6 +66,11 @@ func TestGetTestByUID(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
+	defer func(id int64) {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+	}(id)
 
 	testOut, err := testClient.GetTestByUID(testIn.UID)
 	if err != nil {
@@ -79,10 +85,6 @@ func TestGetTestByUID(t *testing.T) {
 		//TODO: Verify testOut.TestExecutions are nil
 		t.Fatalf("The returned test: %+v does not match the original test %+v", testOut, testIn)
 	}
-
-	if err := testClient.DeleteTest(id); err != nil {
-		t.Fatal(err.Error())
-	}
 }
 
 func TestCreateGetDeleteTestExecution(t *testing.T) {
@@ -93,6 +95,11 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
+	defer func(id int64) {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+	}(testID)
 
 	testExecIn := test.TestExecution(testID)
 
@@ -101,6 +108,14 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create TestExecution", err.Error())
 	}
+	defer func(id int64) {
+		if err := testClient.DeleteTestExecution(testExecID); err != nil {
+			t.Fatal(err.Error())
+		}
+		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+			t.Fatalf("Test execution not deleted")
+		}
+	}(testExecID)
 
 	testExecOut, err := testClient.GetTestExecution(testExecID)
 
@@ -121,18 +136,6 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 		t.Fatalf("The returned test execution: %+v does not match the original %+v",
 			testExecOut, testExecIn)
 	}
-
-	if err := testClient.DeleteTestExecution(testExecID); err != nil {
-		t.Fatal(err.Error())
-	}
-
-	if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
-		t.Fatalf("Test execution not deleted")
-	}
-
-	if err := testClient.DeleteTest(testID); err != nil {
-		t.Fatal(err.Error())
-	}
 }
 
 func TestCreateInvalidTestExecution(t *testing.T) {
@@ -143,6 +146,11 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create Test", err.Error())
 	}
+	defer func(id int64) {
+		if err := testClient.DeleteTest(id); err != nil {
+			t.Fatal(err.Error())
+		}
+	}(testID)
 
 	testExecIn := test.InvalidTestExecution(testID)
 
@@ -150,10 +158,6 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 
 	if err == nil || testExecID != 0 {
 		t.Fatal("Invalid test execution accepted")
-	}
-
-	if err := testClient.DeleteTest(testID); err != nil {
-		t.Fatal(err.Error())
 	}
 }
 
