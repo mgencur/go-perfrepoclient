@@ -15,7 +15,7 @@ type Metric struct {
 	Comparator  string `xml:"comparator,attr,omitempty"`
 	Name        string `xml:"name,attr"`
 	ID          int64  `xml:"id,attr,omitempty"`
-	Description string `xml:"description"`
+	Description string `xml:"description,omitempty"`
 }
 
 type Test struct {
@@ -24,8 +24,8 @@ type Test struct {
 	GroupID     string   `xml:"groupId,attr"`
 	ID          int64    `xml:"id,attr,omitempty"`
 	UID         string   `xml:"uid,attr"`
-	Description string   `xml:"description"`
-	Metrics     []Metric `xml:"metrics>metric"`
+	Description string   `xml:"description,omitempty"`
+	Metrics     []Metric `xml:"metrics>metric,omitempty"`
 	//TODO: Add TestExecutions
 }
 
@@ -34,12 +34,13 @@ type TestExecution struct {
 	XMLName    xml.Name                 `xml:"testExecution"`
 	Name       string                   `xml:"name,attr"`
 	ID         int64                    `xml:"id,attr,omitempty"`
+	Comment    string                   `xml:"comment,omitempty"`
 	TestID     int64                    `xml:"testId,attr"`
 	TestUID    string                   `xml:"testUid,attr"`
 	Started    JaxbTime                 `xml:"started,attr"`
-	Parameters []TestExecutionParameter `xml:"parameters>parameter"`
-	Tags       []Tag                    `xml:"tags>tag"`
-	Values     []Value                  `xml:"values>value"`
+	Parameters []TestExecutionParameter `xml:"parameters>parameter,omitempty"`
+	Tags       []Tag                    `xml:"tags>tag,omitempty"`
+	Values     []Value                  `xml:"values>value,omitempty"`
 }
 
 type TestExecutionParameter struct {
@@ -56,7 +57,7 @@ type Value struct {
 	MetricComparator string           `xml:"metricComparator,attr,omitempty"`
 	MetricName       string           `xml:"metricName,attr"`
 	Result           float64          `xml:"result,attr"`
-	Parameters       []ValueParameter `xml:"parameters>parameter"`
+	Parameters       []ValueParameter `xml:"parameters>parameter,omitempty"`
 }
 
 type ValueParameter struct {
