@@ -63,12 +63,8 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Test")
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	res, err := strconv.ParseInt(string(body), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return res, nil
+
+	return responseBodyAsInt(resp)
 }
 
 func errMsg(req *http.Request, resp *http.Response) error {
@@ -170,6 +166,11 @@ func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (int6
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.Wrap(errMsg(req, resp), "Error while creating TestExecution")
 	}
+
+	return responseBodyAsInt(resp)
+}
+
+func responseBodyAsInt(resp *http.Response) (int64, error) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
 	if err != nil {
@@ -241,15 +242,11 @@ func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Attachment")
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	res, err := strconv.ParseInt(string(body), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return res, nil
+
+	return responseBodyAsInt(resp)
 }
 
-// GetAttachment returns the attachment with given ID in the form of io.Reader or
+// GetAttachment returns the attachment with given ID in the form of io.ReadCloser or
 // error when the operation failed.
 func (c *PerfRepoClient) GetAttachment(id int64) (io.ReadCloser, error) {
 	url := fmt.Sprintf("%s/testExecution/attachment/%d", c.url, id)
@@ -298,13 +295,8 @@ func (c *PerfRepoClient) CreateReport(report *apis.Report) (int64, error) {
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Report")
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	res, err := strconv.ParseInt(string(body), 10, 64)
-	if err != nil {
-		return 0, err
-	}
 
-	return res, nil
+	return responseBodyAsInt(resp)
 }
 
 // UpdateReport updates existing Report in PerfRepo. Returns
@@ -334,12 +326,8 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (int64, error) {
 	if resp.StatusCode != http.StatusCreated {
 		return 0, errors.Wrap(errMsg(req, resp), "Error while updating Report")
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	res, err := strconv.ParseInt(string(body), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return res, nil
+
+	return responseBodyAsInt(resp)
 }
 
 // DeleteReport deletes the given Report from the PerfRepo database.
