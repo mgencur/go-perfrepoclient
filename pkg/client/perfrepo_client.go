@@ -61,7 +61,7 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
+		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Test")
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
@@ -69,6 +69,11 @@ func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
 		return 0, err
 	}
 	return res, nil
+}
+
+func errMsg(req *http.Request, resp *http.Response) error {
+	body, _ := ioutil.ReadAll(resp.Body)
+	return fmt.Errorf("URL: %s, Status: %v, Response: %v", req.URL.String(), resp.Status, string(body))
 }
 
 // GetTest returns an existing test by its identifier or nil if there's an error
@@ -108,7 +113,7 @@ func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
 		err = xml.Unmarshal(body, &t)
 		return &t, err
 	default:
-		return nil, errors.New(resp.Status)
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Test")
 	}
 }
 
@@ -116,20 +121,26 @@ func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
 // succeeds.
 func (c *PerfRepoClient) DeleteTest(id int64) error {
 	deleteTestURL := fmt.Sprintf("%s/test/id/%d", c.url, id)
+	if err := c.deleteByURL(deleteTestURL); err != nil {
+		errors.Wrap(err, fmt.Sprintf("Failed to delete test with id %d", id))
+	}
+	return nil
+}
 
-	req, err := c.httpDelete(deleteTestURL)
+func (c *PerfRepoClient) deleteByURL(url string) error {
+	req, err := c.httpDelete(url)
 	if err != nil {
 		return err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return err
+		return errMsg(req, resp)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Failed to delete test with id %d: %v", id, resp.Status)
+		return errMsg(req, resp)
 	}
 	return nil
 }
@@ -152,12 +163,12 @@ func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (int6
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return 0, errors.Wrap(err, "HTTP request failed")
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
+		return 0, errors.Wrap(errMsg(req, resp), "Error while creating TestExecution")
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
@@ -194,28 +205,16 @@ func (c *PerfRepoClient) GetTestExecution(id int64) (*apis.TestExecution, error)
 		err = xml.Unmarshal(body, &t)
 		return &t, err
 	default:
-		return nil, errors.New(resp.Status)
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting TestExecution")
 	}
 }
 
 // DeleteTestExecution deletes the given test execution from the PerfRepo database.
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
-	deleteTestURL := fmt.Sprintf("%s/testExecution/%d", c.url, id)
-
-	req, err := c.httpDelete(deleteTestURL)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Failed to delete test execution with id %d: %v", id, resp.Status)
+	deleteTestExecURL := fmt.Sprintf("%s/testExecution/%d", c.url, id)
+	if err := c.deleteByURL(deleteTestExecURL); err != nil {
+		errors.Wrap(err, fmt.Sprintf("Failed to delete test execution with id %d", id))
 	}
 	return nil
 }
@@ -235,12 +234,12 @@ func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return 0, errors.Wrap(err, "HTTP request failed")
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
+		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Attachment")
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
@@ -271,7 +270,7 @@ func (c *PerfRepoClient) GetAttachment(id int64) (io.ReadCloser, error) {
 		}
 		return resp.Body, err
 	default:
-		return nil, errors.New(resp.Status)
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Attachment")
 	}
 }
 
@@ -292,16 +291,14 @@ func (c *PerfRepoClient) CreateReport(report *apis.Report) (int64, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return 0, errors.Wrap(err, "HTTP request failed")
+		return 0, err
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
-
 	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.New(string(body))
+		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Report")
 	}
-
+	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
 	if err != nil {
 		return 0, err
@@ -330,12 +327,12 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (int64, error) {
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return 0, errors.Wrap(err, "HTTP request failed")
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, fmt.Errorf("Unexpected status code %v", errors.New(resp.Status))
+		return 0, errors.Wrap(errMsg(req, resp), "Error while updating Report")
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
 	res, err := strconv.ParseInt(string(body), 10, 64)
@@ -349,20 +346,8 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (int64, error) {
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteReport(id int64) error {
 	deleteReportURL := fmt.Sprintf("%s/report/id/%d", c.url, id)
-
-	req, err := c.httpDelete(deleteReportURL)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("Failed to delete report with id %d: %v", id, resp.Status)
+	if err := c.deleteByURL(deleteReportURL); err != nil {
+		errors.Wrap(err, fmt.Sprintf("Failed to delete report with id %d", id))
 	}
 	return nil
 }
@@ -394,7 +379,7 @@ func (c *PerfRepoClient) GetReport(id int64) (*apis.Report, error) {
 		err = xml.Unmarshal(body, &t)
 		return &t, err
 	default:
-		return nil, errors.New(resp.Status)
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Report")
 	}
 }
 

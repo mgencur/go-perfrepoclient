@@ -187,7 +187,8 @@ func TestUpdateTestExecution(t *testing.T) {
 		if err := testClient.DeleteTestExecution(testExecID); err != nil {
 			t.Fatal(err.Error())
 		}
-		if _, err = testClient.GetTestExecution(testExecID); err == nil || !strings.Contains(err.Error(), "doesn't exist") {
+		if _, err = testClient.GetTestExecution(testExecID); err == nil ||
+			!strings.Contains(err.Error(), "doesn't exist") {
 			t.Fatalf("Test execution not deleted")
 		}
 	}()
@@ -279,10 +280,7 @@ func TestCreateGetDeleteReport(t *testing.T) {
 		if err := testClient.DeleteReport(id); err != nil {
 			t.Fatal(err.Error())
 		}
-
 		if _, err = testClient.GetReport(id); err == nil {
-			// https://github.com/PerfCake/PerfRepo/issues/93
-			//!strings.Contains(err.Error(), "doesn't exist") {
 			t.Fatalf("Report not deleted: %v", err)
 		}
 	}()
