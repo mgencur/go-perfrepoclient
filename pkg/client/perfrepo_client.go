@@ -73,6 +73,65 @@ func errMsg(req *http.Request, resp *http.Response) error {
 	return fmt.Errorf("URL: %s, Status: %v, Response: %v", req.URL.String(), resp.Status, string(body))
 }
 
+// AddMetric adds a new Metric to an existing Test. Returns
+// the ID of the Metric or returns 0 when there was an error.
+func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (int64, error) {
+	url := fmt.Sprintf("%s/test/id/%d/addMetric", c.url, testID)
+
+	marshalled, err := xml.MarshalIndent(metric, "", "    ")
+	if err != nil {
+		return 0, err
+	}
+
+	req, err := c.httpPost(url, marshalled)
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return 0, errors.Wrap(errMsg(req, resp), "Error while adding Metric")
+	}
+
+	return responseBodyAsInt(resp)
+}
+
+// GetMetric returns an existing Metric by its identifier or nil if there's an error
+func (c *PerfRepoClient) GetMetric(id int64) (*apis.Metric, error) {
+	url := fmt.Sprintf("%s/metric/%d", c.url, id)
+	req, err := c.httpGet(url)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if resp.ContentLength == 0 {
+			return nil, fmt.Errorf("Metric with given location %s doesn't exist", url)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		var m apis.Metric
+		err = xml.Unmarshal(body, &m)
+		return &m, err
+	default:
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Metric")
+	}
+}
+
 // GetTest returns an existing test by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 	url := fmt.Sprintf("%s/test/id/%d", c.url, id)

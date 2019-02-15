@@ -14,10 +14,11 @@ const (
 )
 
 type Metric struct {
-	Comparator  string `xml:"comparator,attr,omitempty"`
-	Name        string `xml:"name,attr"`
-	ID          int64  `xml:"id,attr,omitempty"`
-	Description string `xml:"description,omitempty"`
+	XMLName     xml.Name `xml:"metric"`
+	Comparator  string   `xml:"comparator,attr,omitempty"`
+	Name        string   `xml:"name,attr"`
+	ID          int64    `xml:"id,attr,omitempty"`
+	Description string   `xml:"description,omitempty"`
 }
 
 type Test struct {
@@ -51,8 +52,9 @@ type TestExecutionParameter struct {
 }
 
 type Tag struct {
-	ID   int64  `xml:"id,attr,omitempty"`
-	Name string `xml:"name,attr"`
+	XMLName xml.Name `xml:"tag"`
+	ID      int64    `xml:"id,attr,omitempty"`
+	Name    string   `xml:"name,attr"`
 }
 
 type Value struct {
