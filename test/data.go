@@ -158,14 +158,8 @@ func Report(name string, username string) *apis.Report {
 		Name: name + salt,
 		Type: "TestReport",
 		User: username,
-		Properties: []apis.Entry{
-			{
-				Key: "property1",
-				Value: apis.ReportProperty{
-					Name:  "name",
-					Value: "value",
-				},
-			},
+		Properties: map[string]string{
+			"property1": "value",
 		},
 	}
 }

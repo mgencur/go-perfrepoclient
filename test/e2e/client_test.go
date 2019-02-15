@@ -300,6 +300,43 @@ func TestCreateGetDeleteReport(t *testing.T) {
 	}
 }
 
+func TestUpdateReport(t *testing.T) {
+	orig := test.Report("report", perfRepoUser)
+
+	origID, err := testClient.CreateReport(orig)
+
+	if err != nil {
+		t.Fatal("Failed to create Report", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteReport(origID); err != nil {
+			t.Fatal(err.Error())
+		}
+		if _, err = testClient.GetReport(origID); err == nil {
+			t.Fatalf("Report not deleted: %v", err)
+		}
+	}()
+
+	update := test.Report("updated report", perfRepoUser)
+	update.ID = origID //use the same id, we're updating the original report
+	update.Type = "ReportUpdate"
+	update.Properties["property2"] = "value"
+
+	updateID, err := testClient.UpdateReport(update)
+
+	updateOut, err := testClient.GetReport(updateID)
+	if err != nil {
+		t.Fatal("Failed to get Report", err.Error())
+	}
+
+	if updateOut.Name != update.Name ||
+		updateOut.Type != update.Type ||
+		len(updateOut.Properties) != len(update.Properties) ||
+		!propertiesEqual(updateOut, update, "property1", "property2") {
+		t.Fatalf("The returned report: %+v does not match the original %+v", updateOut, update)
+	}
+}
+
 func paramsEqual(actual, expected *apis.TestExecution) bool {
 	for i, p := range expected.Parameters {
 		if actual.Parameters[i].Name != p.Name || actual.Parameters[i].Value != p.Value {
@@ -374,12 +411,9 @@ func firstMetricByParam(testExec *apis.TestExecution, metricName string, param a
 }
 
 func propertiesEqual(actual, expected *apis.Report, propsToCompare ...string) bool {
-	for i, p := range expected.Properties {
-		if isIncluded(p.Key, propsToCompare...) {
-			if actual.Properties[i].Value.Name != p.Value.Name ||
-				actual.Properties[i].Value.Value != p.Value.Value {
-				return false
-			}
+	for _, p := range propsToCompare {
+		if actual.Properties[p] == "" || actual.Properties[p] != expected.Properties[p] {
+			return false
 		}
 	}
 	return true

@@ -2,6 +2,7 @@ package apis
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io"
 	"time"
 )
@@ -73,8 +74,7 @@ type Report struct {
 	Type        string       `xml:"type,attr"`
 	User        string       `xml:"user,attr"`
 	Permissions []Permission `xml:"permissions>permission,omitempty"`
-	Properties  []Entry      `xml:"properties>entry,omitempty"`
-	//TODO: Convert Properties to Map and implement custom marshalling for Maps
+	Properties  PropertyMap  `xml:"properties"`
 }
 
 type Permission struct {
@@ -87,9 +87,107 @@ type Permission struct {
 	AccessLevel string   `xml:"access-level,omitempty"`
 }
 
-type Entry struct {
-	Key   string         `xml:"key,omitempty"`
-	Value ReportProperty `xml:"value,omitempty"`
+type PropertyMap map[string]string
+
+// MarshalXML marshals the property map to XML.
+// Go doesn't support marshalling maps out of the box
+func (p *PropertyMap) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	tokens := []xml.Token{start}
+
+	for key, value := range *p {
+		startEntry := xml.StartElement{Name: xml.Name{"", "entry"}}
+		tokens = append(tokens, startEntry)
+		startKey := xml.StartElement{Name: xml.Name{"", "key"}}
+		tokens = append(tokens, startKey, xml.CharData(key), startKey.End())
+		startValue := xml.StartElement{
+			Name: xml.Name{"", "value"},
+			Attr: []xml.Attr{
+				{
+					Name:  xml.Name{"", "name"},
+					Value: key,
+				},
+				{
+					Name:  xml.Name{"", "value"},
+					Value: value,
+				},
+			},
+		}
+		tokens = append(tokens, startValue, startValue.End())
+		tokens = append(tokens, startEntry.End())
+	}
+
+	tokens = append(tokens, start.End())
+
+	for _, t := range tokens {
+		err := e.EncodeToken(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := e.Flush()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Unmarshall provides custom unmarshalling for the PropertyMap type
+func (p *PropertyMap) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	propertyMap := map[string]string{}
+	for {
+		t, err := d.Token()
+		if err != nil {
+			break
+		}
+		switch tt := t.(type) {
+		case xml.StartElement:
+			if tt.Name.Local == "entry" { //parse whole entry and sub-elements
+				entryParsed := false
+				for {
+					if entryParsed {
+						break
+					}
+					tEntry, err := d.Token()
+					if err != nil {
+						break
+					}
+					var key, value string
+					switch ttEntry := tEntry.(type) {
+					case xml.StartElement:
+						if ttEntry.Name.Local == "value" { //parse value element
+							for _, attr := range ttEntry.Attr {
+								if attr.Name.Local == "name" {
+									key = attr.Value
+								}
+								if attr.Name.Local == "value" {
+									value = attr.Value
+								}
+							}
+							propertyMap[key] = value
+						} else if ttEntry.Name.Local == "key" { //ignore key element
+							continue
+						} else {
+							return fmt.Errorf("Unexpected element: %v", ttEntry)
+						}
+					case xml.EndElement:
+						if ttEntry.Name.Local == "entry" {
+							entryParsed = true
+						}
+					}
+				}
+			} else {
+				return fmt.Errorf("Unexpected element: %v", tt)
+			}
+		case xml.EndElement:
+			if tt.Name == start.Name {
+				break
+			}
+		}
+	}
+	*p = propertyMap
+	return nil
 }
 
 type ReportProperty struct {
@@ -98,15 +196,15 @@ type ReportProperty struct {
 	Value string `xml:"value,attr"`
 }
 
-type JaxbTime struct {
-	time.Time
-}
-
 // Holds data related to an attachment for TestExecution
 type Attachment struct {
 	File           io.Reader // data
 	ContentType    string    // MimeType of the data
 	TargetFileName string    // name under which the attachment will be stored in PerfRepo
+}
+
+type JaxbTime struct {
+	time.Time
 }
 
 // UnmarshalXMLAttr implements custom unmarshalling of date/time attribute compatible with default JAXB format
