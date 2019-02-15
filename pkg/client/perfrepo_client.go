@@ -5,10 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	authHeader        = "Authorization"
-	contentTypeHeader = "Content-Type"
-	targetFileHeader  = "filename"
+	authHeader               = "Authorization"
+	contentTypeHeader        = "Content-Type"
+	contentDispositionHeader = "Content-Disposition"
+	targetFileHeader         = "filename"
 )
 
 // PerfRepoClient has methods for communicating with a remote PerfRepo instance via
@@ -246,9 +247,9 @@ func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis
 	return responseBodyAsInt(resp)
 }
 
-// GetAttachment returns the attachment with given ID in the form of io.ReadCloser or
+// GetAttachment returns an existing attachment with given ID or
 // error when the operation failed.
-func (c *PerfRepoClient) GetAttachment(id int64) (io.ReadCloser, error) {
+func (c *PerfRepoClient) GetAttachment(id int64) (*apis.Attachment, error) {
 	url := fmt.Sprintf("%s/testExecution/attachment/%d", c.url, id)
 	req, err := c.httpGet(url)
 	if err != nil {
@@ -259,16 +260,35 @@ func (c *PerfRepoClient) GetAttachment(id int64) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if resp.ContentLength == 0 {
 			return nil, fmt.Errorf("Attachment with given location %s doesn't exist", url)
 		}
-		return resp.Body, err
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &apis.Attachment{
+			File:           bytes.NewReader(bodyBytes),
+			ContentType:    resp.Header.Get(contentTypeHeader),
+			TargetFileName: parseFileName(resp.Header.Get(contentDispositionHeader)),
+		}, nil
 	default:
 		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Attachment")
 	}
+}
+
+// The header value is in this format: attachment; filename=attachment1.txt
+func parseFileName(headerValue string) string {
+	const fileSep = "filename="
+	parts := strings.Split(headerValue, ";")
+	if len(parts) != 2 || !strings.Contains(parts[1], fileSep) {
+		return ""
+	}
+	return strings.Split(parts[1], fileSep)[1]
 }
 
 // CreateReport creates a new Report object in PerfRepo. Returns

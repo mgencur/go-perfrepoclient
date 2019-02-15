@@ -214,7 +214,7 @@ func TestUpdateTestExecution(t *testing.T) {
 	}
 }
 
-func TestCreateAttachment(t *testing.T) {
+func TestCreateGetAttachment(t *testing.T) {
 	testIn := test.Test("test1")
 
 	testID, err := testClient.CreateTest(testIn)
@@ -245,26 +245,28 @@ func TestCreateAttachment(t *testing.T) {
 	}()
 
 	const attachmentText = "this is a juicy test file"
-	att := apis.Attachment{
+	attIn := apis.Attachment{
 		File:           strings.NewReader(attachmentText),
 		ContentType:    "text/plain",
 		TargetFileName: "attachment1.txt",
 	}
-	attID, err := testClient.CreateAttachment(testExecID, att)
+	attID, err := testClient.CreateAttachment(testExecID, attIn)
 	if err != nil {
 		t.Fatal("Failed to create Attachment", err.Error())
 	}
-	bodyReader, err := testClient.GetAttachment(attID)
+	attOut, err := testClient.GetAttachment(attID)
 	if err != nil {
 		t.Fatal("Failed to get Attachment", err.Error())
 	}
-	defer bodyReader.Close()
-	bodyBytes, err := ioutil.ReadAll(bodyReader)
+	bodyBytes, err := ioutil.ReadAll(attOut.File)
 	if err != nil {
 		t.Fatal("Unable to read attachment", err.Error())
 	}
-	if string(bodyBytes) != attachmentText {
-		t.Fatal("Unexpected attachment body")
+	if string(bodyBytes) != attachmentText ||
+		attOut.ContentType != attIn.ContentType ||
+		attOut.TargetFileName != attIn.TargetFileName {
+		t.Fatalf("The returned attachment: %+v does not match the original %+v",
+			attOut, attIn)
 	}
 }
 
