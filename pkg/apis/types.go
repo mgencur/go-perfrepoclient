@@ -40,7 +40,7 @@ type TestExecution struct {
 	Comment    string                   `xml:"comment,omitempty"`
 	TestID     int64                    `xml:"testId,attr"`
 	TestUID    string                   `xml:"testUid,attr"`
-	Started    JaxbTime                 `xml:"started,attr"`
+	Started    *JaxbTime                `xml:"started,attr"`
 	Parameters []TestExecutionParameter `xml:"parameters>parameter,omitempty"`
 	Tags       []Tag                    `xml:"tags>tag,omitempty"`
 	Values     []Value                  `xml:"values>value,omitempty"`
@@ -90,6 +90,45 @@ type Permission struct {
 }
 
 type PropertyMap map[string]string
+
+// Holds data related to an attachment for TestExecution
+type Attachment struct {
+	File           io.Reader // data
+	ContentType    string    // MimeType of the data
+	TargetFileName string    // name under which the attachment will be stored in PerfRepo
+}
+
+type JaxbTime struct {
+	time.Time
+}
+
+type TestExecutionSearch struct {
+	XMLName          xml.Name            `xml:"test-execution-search"`
+	GroupFilter      string              `xml:"group-filter,omitempty"`
+	IDS              *[]int64            `xml:"ids>id,omitempty"` //use pointer to array so that the parent ids element can be ommitted if empty/nil
+	LabelParameter   string              `xml:"labelParameter,omitempty"`
+	LimitFrom        int                 `xml:"limit-from,omitempty"`
+	HowMany          int                 `xml:"how-many,omitempty"`
+	OrderBy          string              `xml:"order-by,omitempty"`
+	OrderByParameter string              `xml:"orderByParameter,omitempty"`
+	Parameters       []CriteriaParameter `xml:"parameters>parameter,omitempty"`
+	ExecutedAfter    *JaxbTime           `xml:"executed-after,omitempty"`
+	ExecutedBefore   *JaxbTime           `xml:"executed-before,omitempty"`
+	Tags             string              `xml:"tags,omitempty"`
+	TestName         string              `xml:"test-name,omitempty"`
+	TestUID          string              `xml:"test-uid,omitempty"`
+}
+
+type CriteriaParameter struct {
+	Name  string `xml:"name"`
+	Value string `xml:"value"`
+}
+
+// TestExecutions type holds results of SearchTestExecutions operation
+type TestExecutions struct {
+	XMLName        xml.Name        `xml:"testExecutions"`
+	TestExecutions []TestExecution `xml:"testExecution"`
+}
 
 // MarshalXML marshals the property map to XML.
 // Go doesn't support marshalling maps out of the box
@@ -190,23 +229,6 @@ func (p *PropertyMap) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error
 	}
 	*p = propertyMap
 	return nil
-}
-
-type ReportProperty struct {
-	ID    int64  `xml:"id,attr,omitempty"`
-	Name  string `xml:"name,attr"`
-	Value string `xml:"value,attr"`
-}
-
-// Holds data related to an attachment for TestExecution
-type Attachment struct {
-	File           io.Reader // data
-	ContentType    string    // MimeType of the data
-	TargetFileName string    // name under which the attachment will be stored in PerfRepo
-}
-
-type JaxbTime struct {
-	time.Time
 }
 
 // UnmarshalXMLAttr implements custom unmarshalling of date/time attribute compatible with default JAXB format

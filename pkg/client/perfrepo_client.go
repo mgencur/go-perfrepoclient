@@ -280,6 +280,40 @@ func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
 	return nil
 }
 
+// SearchTestExecutions searches for test executions based on criteria passed as the argument.
+func (c *PerfRepoClient) SearchTestExecutions(criteria *apis.TestExecutionSearch) ([]apis.TestExecution, error) {
+	searchTestExecURL := c.url + "/testExecution/search"
+
+	marshalled, err := xml.MarshalIndent(criteria, "", "    ")
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := c.httpPost(searchTestExecURL, marshalled)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		var t apis.TestExecutions
+		err = xml.Unmarshal(body, &t)
+		return t.TestExecutions, err
+	default:
+		return nil, errors.Wrap(errMsg(req, resp), "Error while searching TestExecutions")
+	}
+}
+
 // CreateAttachment creates a new attachment for a TestExecution identified by its ID.
 // Returns an ID of the attachment itself or error when the operation failed
 func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis.Attachment) (int64, error) {

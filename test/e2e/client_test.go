@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PerfCake/go-perfrepoclient/pkg/apis"
 	"github.com/PerfCake/go-perfrepoclient/pkg/client"
@@ -152,7 +153,7 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.TestExecution(testID)
+	testExecIn := test.ExecutionDefault(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 
@@ -226,7 +227,7 @@ func TestUpdateTestExecution(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.TestExecution(testID)
+	testExecIn := test.ExecutionDefault(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 
@@ -264,6 +265,124 @@ func TestUpdateTestExecution(t *testing.T) {
 	}
 }
 
+func TestSearchTestExecutions(t *testing.T) {
+	test1In := test.Test("test1")
+	test1ID, err := testClient.CreateTest(test1In)
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteTest(test1ID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	test2In := test.Test("test2")
+	test2ID, err := testClient.CreateTest(test2In)
+	if err != nil {
+		t.Fatal("Failed to create Test", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteTest(test2ID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	// create 1. test execution
+	params := []apis.TestExecutionParameter{
+		{Name: "param1", Value: "value1"},
+		{Name: "param2", Value: "value2"},
+	}
+	tags := []apis.Tag{{Name: "tag1"}, {Name: "tag2"}}
+	datetime := time.Date(2016, time.July, 7, 0, 0, 0, 0, time.UTC)
+	testExec1 := test.Execution(test1ID, &apis.JaxbTime{datetime}, params, tags)
+	testExec1ID, err := testClient.CreateTestExecution(testExec1)
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteTestExecution(testExec1ID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	// create 2. test execution
+	params = []apis.TestExecutionParameter{
+		{Name: "param1", Value: "value3"},
+		{Name: "param2", Value: "value4"},
+	}
+	tags = []apis.Tag{{Name: "tag2"}, {Name: "tag3"}}
+	datetime = time.Date(2016, time.July, 10, 0, 0, 0, 0, time.UTC)
+	testExec2 := test.Execution(test1ID, &apis.JaxbTime{datetime}, params, tags)
+	testExec2ID, err := testClient.CreateTestExecution(testExec2)
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteTestExecution(testExec2ID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	// create 3. test execution
+	params = []apis.TestExecutionParameter{
+		{Name: "param1", Value: "value1"},
+		{Name: "param2", Value: "value3"},
+	}
+	tags = []apis.Tag{{Name: "tag3"}, {Name: "tag4"}}
+	datetime = time.Date(2016, time.July, 13, 0, 0, 0, 0, time.UTC)
+	testExec3 := test.Execution(test2ID, &apis.JaxbTime{datetime}, params, tags)
+	testExec3ID, err := testClient.CreateTestExecution(testExec3)
+	if err != nil {
+		t.Fatal("Failed to create TestExecution", err.Error())
+	}
+	defer func() {
+		if err := testClient.DeleteTestExecution(testExec3ID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	// create 1. search
+	ids := []int64{testExec1ID, testExec2ID}
+	criteria := &apis.TestExecutionSearch{
+		IDS: &ids,
+	}
+	executions, err := testClient.SearchTestExecutions(criteria)
+
+	if len(ids) != len(executions) ||
+		!idsIncluded(executions, ids...) {
+		t.Fatalf("The returned test executions do not match the search criteria. Executions: %+v, Criteria: %+v",
+			executions, criteria)
+	}
+
+	// create 2. search
+	criteria = &apis.TestExecutionSearch{
+		Tags: "tag2",
+	}
+	executions, err = testClient.SearchTestExecutions(criteria)
+
+	if len(ids) != len(executions) ||
+		!idsIncluded(executions, ids...) {
+		t.Fatalf("The returned test executions do not match the search criteria. Executions: %+v, Criteria: %+v",
+			executions, criteria)
+	}
+
+	// create 3. search
+	ids = []int64{testExec1ID, testExec3ID}
+	criteria = &apis.TestExecutionSearch{
+		Parameters: []apis.CriteriaParameter{
+			{Name: "param1", Value: "value1"},
+		},
+	}
+	executions, err = testClient.SearchTestExecutions(criteria)
+
+	if len(ids) != len(executions) ||
+		!idsIncluded(executions, ids...) {
+		t.Fatalf("The returned test executions do not match the search criteria. Executions: %+v, Criteria: %+v",
+			executions, criteria)
+	}
+}
+
 func TestCreateGetAttachment(t *testing.T) {
 	testIn := test.Test("test1")
 
@@ -278,7 +397,7 @@ func TestCreateGetAttachment(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.TestExecution(testID)
+	testExecIn := test.ExecutionDefault(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 
@@ -483,6 +602,21 @@ func firstMetricByParam(testExec *apis.TestExecution, metricName string, param a
 func propertiesEqual(actual, expected *apis.Report, propsToCompare ...string) bool {
 	for _, p := range propsToCompare {
 		if actual.Properties[p] == "" || actual.Properties[p] != expected.Properties[p] {
+			return false
+		}
+	}
+	return true
+}
+
+func idsIncluded(executions []apis.TestExecution, ids ...int64) bool {
+	for _, id := range ids {
+		var found bool
+		for _, execution := range executions {
+			if execution.ID == id {
+				found = true
+			}
+		}
+		if !found {
 			return false
 		}
 	}

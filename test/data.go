@@ -72,31 +72,36 @@ func initSeed() func() {
 	}
 }
 
-// TestExecution creates a new TestExecution object referencing given test via testId
-func TestExecution(testId int64) *apis.TestExecution {
+// Execution creates a new TestExecution object referencing given test via testId
+func ExecutionDefault(testID int64) *apis.TestExecution {
+	started := &apis.JaxbTime{time.Now()}
+	params := []apis.TestExecutionParameter{
+		{
+			Name:  "param1",
+			Value: "value1",
+		},
+		{
+			Name:  "param2",
+			Value: "value2",
+		},
+	}
+	tags := []apis.Tag{
+		{
+			Name: "tag1",
+		},
+		{
+			Name: "tag2",
+		},
+	}
+	return Execution(testID, started, params, tags)
+}
+
+func Execution(testID int64, started *apis.JaxbTime, params []apis.TestExecutionParameter, tags []apis.Tag) *apis.TestExecution {
 	salt := RandomString()
-	return &apis.TestExecution{
-		TestID:  testId,
+	testExec := apis.TestExecution{
+		TestID:  testID,
 		Name:    "execution" + salt,
-		Started: apis.JaxbTime{time.Now()},
-		Parameters: []apis.TestExecutionParameter{
-			{
-				Name:  "param1",
-				Value: "value1",
-			},
-			{
-				Name:  "param2",
-				Value: "value2",
-			},
-		},
-		Tags: []apis.Tag{
-			{
-				Name: "tag1",
-			},
-			{
-				Name: "tag2",
-			},
-		},
+		Started: started,
 		Values: []apis.Value{
 			{
 				MetricName: "metric1",
@@ -128,6 +133,13 @@ func TestExecution(testId int64) *apis.TestExecution {
 			},
 		},
 	}
+	for _, param := range params {
+		testExec.Parameters = append(testExec.Parameters, param)
+	}
+	for _, tag := range tags {
+		testExec.Tags = append(testExec.Tags, tag)
+	}
+	return &testExec
 }
 
 // InvalidTestExecution creates a TestExecution that has multiple metrics with same
@@ -137,7 +149,7 @@ func InvalidTestExecution(testId int64) *apis.TestExecution {
 	return &apis.TestExecution{
 		TestID:  testId,
 		Name:    "execution" + salt,
-		Started: apis.JaxbTime{time.Now()},
+		Started: &apis.JaxbTime{time.Now()},
 		Values: []apis.Value{
 			{
 				MetricName: "multimetric",
