@@ -484,6 +484,64 @@ func (c *PerfRepoClient) GetReport(id int64) (*apis.Report, error) {
 	}
 }
 
+// CreateReportPermission adds a new permission to an existing report. Returns
+// nil if the operation was successful.
+func (c *PerfRepoClient) CreateReportPermission(permission *apis.Permission) error {
+	url := fmt.Sprintf("%s/report/id/%d/addPermission", c.url, permission.ReportID)
+
+	marshalled, err := xml.MarshalIndent(permission, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	req, err := c.httpPost(url, marshalled)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	//This is inconsistent with other "Create" API methods where PerfRepo returns StatusCreated
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(errMsg(req, resp), "Error while adding Permission to Report")
+	}
+	//The return type is inconsistent with other "Create" API methods where PerfRepo returns id
+	//of the object
+	return nil
+}
+
+// DeleteReportPermission deletes the given permission from the PerfRepo database.
+// Returns nil when the request succeeds
+func (c *PerfRepoClient) DeleteReportPermission(permission *apis.Permission) error {
+	deletePermissionURL := fmt.Sprintf("%s/report/id/%d/deletePermission", c.url, permission.ReportID)
+
+	marshalled, err := xml.MarshalIndent(permission, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	req, err := c.httpPost(deletePermissionURL, marshalled)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return errMsg(req, resp)
+	}
+	defer resp.Body.Close()
+
+	//This is inconsistent with other "Delete" API methods where PerfRepo returns StatusNoContent
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(errMsg(req, resp), "Error while deleting permission")
+	}
+	return nil
+}
+
 func (c *PerfRepoClient) httpGet(url string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

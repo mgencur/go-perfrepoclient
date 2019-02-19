@@ -80,13 +80,13 @@ type Report struct {
 }
 
 type Permission struct {
-	XMLName     xml.Name `xml:"permission"`
-	ID          int64    `xml:"id,omitempty"`
-	GroupID     int64    `xml:"group-id,omitempty"`
-	ReportID    int64    `xml:"report-id,omitempty"`
-	UserID      int64    `xml:"user-id,omitempty"`
-	AccessType  string   `xml:"access-type,omitempty"`
-	AccessLevel string   `xml:"access-level,omitempty"`
+	XMLName     xml.Name
+	ID          int64  `xml:"id,omitempty"`
+	GroupID     int64  `xml:"group-id,omitempty"`
+	ReportID    int64  `xml:"report-id,omitempty"`
+	UserID      int64  `xml:"user-id,omitempty"`
+	AccessType  string `xml:"access-type,omitempty"`
+	AccessLevel string `xml:"access-level,omitempty"`
 }
 
 type PropertyMap map[string]string

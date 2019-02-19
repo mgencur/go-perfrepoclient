@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"encoding/xml"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -214,6 +215,7 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 	}
 }
 
+//TODO: Change this to actually update test execution
 func TestUpdateTestExecution(t *testing.T) {
 	testIn := test.Test("test1")
 
@@ -507,6 +509,70 @@ func TestUpdateReport(t *testing.T) {
 	}
 }
 
+func TestCreateDeleteReportPermission(t *testing.T) {
+	report := test.Report("report", perfRepoUser)
+
+	reportID, err := testClient.CreateReport(report)
+	if err != nil {
+		t.Fatal("Failed to create Report", err.Error())
+	}
+
+	defer func() {
+		if err := testClient.DeleteReport(reportID); err != nil {
+			t.Fatal(err.Error())
+		}
+	}()
+
+	reportOut, err := testClient.GetReport(reportID)
+	if err != nil {
+		t.Fatal("Failed to get Report", err.Error())
+	}
+
+	if len(reportOut.Permissions) != 1 ||
+		reportOut.Permissions[0].AccessLevel != "GROUP" ||
+		reportOut.Permissions[0].AccessType != "WRITE" {
+		t.Fatal("Default permissions not applied")
+	}
+
+	permission := &apis.Permission{
+		//need to specify this name because PerfRepo expects different name when
+		//the permission is a standalone message and when it's part of a report
+		XMLName:     xml.Name{"", "report-permission"},
+		ReportID:    reportOut.ID,
+		AccessLevel: "PUBLIC",
+		AccessType:  "READ",
+	}
+
+	err = testClient.CreateReportPermission(permission)
+	if err != nil {
+		t.Fatal("Failed to create permission", err.Error())
+	}
+
+	defer func() {
+		if err := testClient.DeleteReportPermission(permission); err != nil {
+			t.Fatal("Failed to delete permission", err.Error())
+		}
+		reportOut, err := testClient.GetReport(reportID)
+		if err != nil {
+			t.Fatal("Failed to get Report", err.Error())
+		}
+		if len(reportOut.Permissions) != 1 ||
+			containsPermission(reportOut.Permissions, permission) {
+			t.Fatal("Permission not deleted")
+		}
+	}()
+
+	reportOut, err = testClient.GetReport(reportID)
+	if err != nil {
+		t.Fatal("Failed to get Report", err.Error())
+	}
+
+	if len(reportOut.Permissions) != 2 ||
+		!containsPermission(reportOut.Permissions, permission) {
+		t.Fatal("Default permissions not applied")
+	}
+}
+
 func paramsEqual(actual, expected *apis.TestExecution) bool {
 	//create a copy to prevent sorting the original
 	actualParamsCopy := append([]apis.TestExecutionParameter(nil), actual.Parameters...)
@@ -640,4 +706,14 @@ func idsIncluded(executions []apis.TestExecution, ids ...int64) bool {
 		}
 	}
 	return true
+}
+
+func containsPermission(perms []apis.Permission, permission *apis.Permission) bool {
+	for _, p := range perms {
+		if p.AccessLevel == permission.AccessLevel &&
+			p.AccessType == permission.AccessType {
+			return true
+		}
+	}
+	return false
 }
