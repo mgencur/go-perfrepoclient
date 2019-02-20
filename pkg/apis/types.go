@@ -4,13 +4,12 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 )
 
 const (
-	MetricComparatorHB = "HB"
-	MetricComparatorLB = "LB"
-	jaxbDateFormat     = "2006-01-02T15:04:05.999-07:00"
+	jaxbDateFormat = "2006-01-02T15:04:05.999-07:00"
 )
 
 type Metric struct {
@@ -29,7 +28,6 @@ type Test struct {
 	UID         string   `xml:"uid,attr"`
 	Description string   `xml:"description,omitempty"`
 	Metrics     []Metric `xml:"metrics>metric,omitempty"`
-	//TODO: Add TestExecutions
 }
 
 //TODO: Implement helper function ToMap
@@ -128,6 +126,34 @@ type CriteriaParameter struct {
 type TestExecutions struct {
 	XMLName        xml.Name        `xml:"testExecutions"`
 	TestExecutions []TestExecution `xml:"testExecution"`
+}
+
+// SortedTags returns a sorted copy of the tags slice
+func (t *TestExecution) SortedTags() []Tag {
+	sortedTags := append([]Tag(nil), t.Tags...)
+	sort.Slice(sortedTags, func(i, j int) bool {
+		return sortedTags[i].Name < sortedTags[j].Name
+	})
+	return sortedTags
+}
+
+// SortedParameters returns a sorted copy of the parameters slice
+func (t *TestExecution) SortedParameters() []TestExecutionParameter {
+	sortedParams := append([]TestExecutionParameter(nil), t.Parameters...)
+	sort.Slice(sortedParams, func(i, j int) bool {
+		return sortedParams[i].Name < sortedParams[j].Name
+	})
+	return sortedParams
+}
+
+// ParametersMap returns test execution parameters map where key is the t.Name and
+// value is the t.Value
+func (t *TestExecution) ParametersMap() map[string]string {
+	paramsMap := make(map[string]string)
+	for _, p := range t.Parameters {
+		paramsMap[p.Name] = p.Value
+	}
+	return paramsMap
 }
 
 // MarshalXML marshals the property map to XML.

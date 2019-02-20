@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -86,7 +85,6 @@ func TestGetTestByUID(t *testing.T) {
 		testIn.GroupID != testOut.GroupID ||
 		id != testOut.ID ||
 		testIn.UID != testOut.UID {
-		//TODO: Verify testOut.TestExecutions are nil
 		t.Fatalf("The returned test: %+v does not match the original test %+v", testOut, testIn)
 	}
 }
@@ -120,7 +118,7 @@ func TestAddGetMetric(t *testing.T) {
 	}
 
 	newMetric := &apis.Metric{
-		Comparator:  apis.MetricComparatorLB,
+		Comparator:  "LB",
 		Name:        "metric3",
 		Description: "this is a test metric 3",
 	}
@@ -574,17 +572,9 @@ func TestCreateDeleteReportPermission(t *testing.T) {
 }
 
 func paramsEqual(actual, expected *apis.TestExecution) bool {
-	//create a copy to prevent sorting the original
-	actualParamsCopy := append([]apis.TestExecutionParameter(nil), actual.Parameters...)
-	expectedParamsCopy := append([]apis.TestExecutionParameter(nil), expected.Parameters...)
-	sort.Slice(actualParamsCopy, func(i, j int) bool {
-		return actualParamsCopy[i].Name < actualParamsCopy[j].Name
-	})
-	sort.Slice(expectedParamsCopy, func(i, j int) bool {
-		return expectedParamsCopy[i].Name < expectedParamsCopy[j].Name
-	})
-	for i, p := range expected.Parameters {
-		if actualParamsCopy[i].Name != p.Name || expectedParamsCopy[i].Value != p.Value {
+	actualSorted := actual.SortedParameters()
+	for i, p := range expected.SortedParameters() {
+		if actualSorted[i].Name != p.Name || actualSorted[i].Value != p.Value {
 			return false
 		}
 	}
@@ -592,17 +582,9 @@ func paramsEqual(actual, expected *apis.TestExecution) bool {
 }
 
 func tagsEqual(actual, expected *apis.TestExecution) bool {
-	//create a copy to prevent sorting the original
-	actualTagsCopy := append([]apis.Tag(nil), actual.Tags...)
-	expectedTagsCopy := append([]apis.Tag(nil), expected.Tags...)
-	sort.Slice(actualTagsCopy, func(i, j int) bool {
-		return actualTagsCopy[i].Name < actualTagsCopy[j].Name
-	})
-	sort.Slice(expectedTagsCopy, func(i, j int) bool {
-		return expectedTagsCopy[i].Name < expectedTagsCopy[j].Name
-	})
-	for i, tag := range expectedTagsCopy {
-		if actualTagsCopy[i].Name != tag.Name {
+	actualSorted := actual.SortedTags()
+	for i, tag := range expected.SortedTags() {
+		if actualSorted[i].Name != tag.Name {
 			return false
 		}
 	}

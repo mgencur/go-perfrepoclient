@@ -31,17 +31,17 @@ func Test(name string) *apis.Test {
 		Description: "This is a test object",
 		Metrics: []apis.Metric{
 			apis.Metric{
-				Comparator:  apis.MetricComparatorLB,
+				Comparator:  "LB",
 				Name:        "metric1",
 				Description: "this is a test metric 1",
 			},
 			apis.Metric{
-				Comparator:  apis.MetricComparatorLB,
+				Comparator:  "LB",
 				Name:        "metric2",
 				Description: "this is a test metric 2",
 			},
 			apis.Metric{
-				Comparator:  apis.MetricComparatorHB,
+				Comparator:  "HB",
 				Name:        "multimetric",
 				Description: "this is a metric with multiple values",
 			},
