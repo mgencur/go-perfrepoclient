@@ -34,7 +34,7 @@ type PerfRepoClient struct {
 func NewPerfRepoClient(url, username, password string) *PerfRepoClient {
 	client := &PerfRepoClient{
 		client: &http.Client{},
-		url:    url,
+		url:    url + "/rest",
 		auth:   base64.StdEncoding.EncodeToString([]byte(username + ":" + password)),
 	}
 	return client

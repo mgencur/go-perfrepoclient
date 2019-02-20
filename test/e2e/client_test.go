@@ -15,16 +15,10 @@ import (
 	"github.com/PerfCake/go-perfrepoclient/test"
 )
 
-const (
-	perfRepoURL  = "http://localhost:8080/testing-repo/rest"
-	perfRepoUser = "perfrepouser"
-	perfRepoPass = "perfrepouser1."
-)
-
 var testClient *client.PerfRepoClient
 
 func TestMain(m *testing.M) {
-	testClient = client.NewPerfRepoClient(perfRepoURL, perfRepoUser, perfRepoPass)
+	testClient = client.NewPerfRepoClient(test.Flags.URL, test.Flags.User, test.Flags.Pass)
 	// call flag.Parse() here if TestMain uses flags
 	os.Exit(m.Run())
 }
@@ -441,7 +435,7 @@ func TestCreateGetAttachment(t *testing.T) {
 }
 
 func TestCreateGetDeleteReport(t *testing.T) {
-	reportIn := test.Report("report", perfRepoUser)
+	reportIn := test.Report("report", test.Flags.User)
 
 	id, err := testClient.CreateReport(reportIn)
 
@@ -471,7 +465,7 @@ func TestCreateGetDeleteReport(t *testing.T) {
 }
 
 func TestUpdateReport(t *testing.T) {
-	orig := test.Report("report", perfRepoUser)
+	orig := test.Report("report", test.Flags.User)
 
 	origID, err := testClient.CreateReport(orig)
 
@@ -487,7 +481,7 @@ func TestUpdateReport(t *testing.T) {
 		}
 	}()
 
-	update := test.Report("updated report", perfRepoUser)
+	update := test.Report("updated report", test.Flags.User)
 	update.ID = origID //use the same id, we're updating the original report
 	update.Type = "ReportUpdate"
 	update.Properties["property2"] = "value"
@@ -508,7 +502,7 @@ func TestUpdateReport(t *testing.T) {
 }
 
 func TestCreateDeleteReportPermission(t *testing.T) {
-	report := test.Report("report", perfRepoUser)
+	report := test.Report("report", test.Flags.User)
 
 	reportID, err := testClient.CreateReport(report)
 	if err != nil {
