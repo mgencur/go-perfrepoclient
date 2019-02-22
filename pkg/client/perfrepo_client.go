@@ -42,30 +42,12 @@ func NewPerfRepoClient(url, username, password string) *PerfRepoClient {
 
 // CreateTest creates a new Test object in PerfRepo with subobjects. Returns
 // the ID of the Test record in database or returns 0 when there was an error.
-func (c *PerfRepoClient) CreateTest(test *apis.Test) (int64, error) {
+func (c *PerfRepoClient) CreateTest(test *apis.Test) (id int64, err error) {
 	createTestURL := c.url + "/test/create"
-
-	marshalled, err := xml.MarshalIndent(test, "", "    ")
-	if err != nil {
-		return 0, err
+	if id, err = c.postEntity(test, createTestURL); err != nil {
+		return 0, errors.Wrap(err, "Failed to create test")
 	}
-
-	req, err := c.httpPost(createTestURL, marshalled)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Test")
-	}
-
-	return responseBodyAsInt(resp)
+	return id, nil
 }
 
 func errMsg(req *http.Request, resp *http.Response) error {
@@ -75,30 +57,12 @@ func errMsg(req *http.Request, resp *http.Response) error {
 
 // AddMetric adds a new Metric to an existing Test. Returns
 // the ID of the Metric or returns 0 when there was an error.
-func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (int64, error) {
-	url := fmt.Sprintf("%s/test/id/%d/addMetric", c.url, testID)
-
-	marshalled, err := xml.MarshalIndent(metric, "", "    ")
-	if err != nil {
-		return 0, err
+func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (id int64, err error) {
+	addMetricURL := fmt.Sprintf("%s/test/id/%d/addMetric", c.url, testID)
+	if id, err = c.postEntity(metric, addMetricURL); err != nil {
+		return 0, errors.Wrap(err, "Failed to add metric")
 	}
-
-	req, err := c.httpPost(url, marshalled)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.Wrap(errMsg(req, resp), "Error while adding Metric")
-	}
-
-	return responseBodyAsInt(resp)
+	return id, nil
 }
 
 // GetMetric returns an existing Metric by its identifier or nil if there's an error
@@ -205,7 +169,7 @@ func (c *PerfRepoClient) deleteByURL(url string) error {
 // the ID of the TestExecution record in database or 0 in the event of error
 func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (id int64, err error) {
 	createTestExecURL := c.url + "/testExecution/create"
-	if id, err = c.postTestExecution(testExec, createTestExecURL); err != nil {
+	if id, err = c.postEntity(testExec, createTestExecURL); err != nil {
 		err = errors.Wrap(err, "Failed to create test execution")
 	}
 	return
@@ -218,14 +182,16 @@ func (c *PerfRepoClient) UpdateTestExecution(testExec *apis.TestExecution) (id i
 		id, err = 0, errors.New("Invalid test execution for update")
 	}
 	updateTestExecURL := fmt.Sprintf("%s/testExecution/update/%d", c.url, testExec.ID)
-	if id, err = c.postTestExecution(testExec, updateTestExecURL); err != nil {
+	if id, err = c.postEntity(testExec, updateTestExecURL); err != nil {
 		err = errors.Wrap(err, "Failed to update test execution")
 	}
 	return
 }
 
-func (c *PerfRepoClient) postTestExecution(testExec *apis.TestExecution, url string) (int64, error) {
-	marshalled, err := xml.MarshalIndent(testExec, "", "    ")
+// postEntity sends a HTTP post with the given entity masrhalled as a body of the request.
+// Returns the id of the entity record in database or 0 in the event of error
+func (c *PerfRepoClient) postEntity(entity interface{}, url string) (int64, error) {
+	marshalled, err := xml.MarshalIndent(entity, "", "    ")
 	if err != nil {
 		return 0, err
 	}
@@ -404,61 +370,25 @@ func parseFileName(headerValue string) string {
 
 // CreateReport creates a new Report object in PerfRepo. Returns
 // the ID of the Report record in database or returns 0 when there was an error.
-func (c *PerfRepoClient) CreateReport(report *apis.Report) (int64, error) {
+func (c *PerfRepoClient) CreateReport(report *apis.Report) (id int64, err error) {
 	createReportURL := c.url + "/report/create"
-
-	marshalled, err := xml.MarshalIndent(report, "", "    ")
-	if err != nil {
-		return 0, err
+	if id, err = c.postEntity(report, createReportURL); err != nil {
+		return 0, errors.Wrap(err, "Failed to create report")
 	}
-
-	req, err := c.httpPost(createReportURL, marshalled)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.Wrap(errMsg(req, resp), "Error while creating Report")
-	}
-
-	return responseBodyAsInt(resp)
+	return id, nil
 }
 
 // UpdateReport updates existing Report in PerfRepo. Returns
 // the ID of the Report record in database or returns 0 when there was an error.
-func (c *PerfRepoClient) UpdateReport(report *apis.Report) (int64, error) {
+func (c *PerfRepoClient) UpdateReport(report *apis.Report) (id int64, err error) {
 	if report == nil {
 		return 0, errors.New("Invalid Report")
 	}
-	createReportURL := fmt.Sprintf("%s/report/update/%d", c.url, report.ID)
-
-	marshalled, err := xml.MarshalIndent(report, "", "    ")
-	if err != nil {
-		return 0, err
+	updateReportURL := fmt.Sprintf("%s/report/update/%d", c.url, report.ID)
+	if id, err = c.postEntity(report, updateReportURL); err != nil {
+		return 0, errors.Wrap(err, "Failed to udpate report")
 	}
-
-	req, err := c.httpPost(createReportURL, marshalled)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.Wrap(errMsg(req, resp), "Error while updating Report")
-	}
-
-	return responseBodyAsInt(resp)
+	return id, nil
 }
 
 // DeleteReport deletes the given Report from the PerfRepo database.
