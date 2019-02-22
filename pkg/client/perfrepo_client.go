@@ -202,17 +202,35 @@ func (c *PerfRepoClient) deleteByURL(url string) error {
 }
 
 // CreateTestExecution creates a new TestExecution object in PerfRepo with subobjects. Returns
-// the ID of the TestExecution record in database or returns 0 when there was an error.
-// TODO: remove redundant code that is common to API calls
-func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (int64, error) {
+// the ID of the TestExecution record in database or 0 in the event of error
+func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (id int64, err error) {
 	createTestExecURL := c.url + "/testExecution/create"
+	if id, err = c.postTestExecution(testExec, createTestExecURL); err != nil {
+		err = errors.Wrap(err, "Failed to create test execution")
+	}
+	return
+}
 
+// UpdateTestExecution updates a given TestExecution object in PerfRepo. Returns
+// the ID of the TestExecution record in database or 0 in the event of error
+func (c *PerfRepoClient) UpdateTestExecution(testExec *apis.TestExecution) (id int64, err error) {
+	if testExec == nil || testExec.ID == 0 {
+		id, err = 0, errors.New("Invalid test execution for update")
+	}
+	updateTestExecURL := fmt.Sprintf("%s/testExecution/update/%d", c.url, testExec.ID)
+	if id, err = c.postTestExecution(testExec, updateTestExecURL); err != nil {
+		err = errors.Wrap(err, "Failed to update test execution")
+	}
+	return
+}
+
+func (c *PerfRepoClient) postTestExecution(testExec *apis.TestExecution, url string) (int64, error) {
 	marshalled, err := xml.MarshalIndent(testExec, "", "    ")
 	if err != nil {
 		return 0, err
 	}
 
-	req, err := c.httpPost(createTestExecURL, marshalled)
+	req, err := c.httpPost(url, marshalled)
 	if err != nil {
 		return 0, err
 	}
@@ -224,7 +242,7 @@ func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (int6
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return 0, errors.Wrap(errMsg(req, resp), "Error while creating TestExecution")
+		return 0, errMsg(req, resp)
 	}
 
 	return responseBodyAsInt(resp)

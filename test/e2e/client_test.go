@@ -147,7 +147,7 @@ func TestCreateGetDeleteTestExecution(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.ExecutionDefault(testID)
+	testExecIn := test.DefaultExecution(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 
@@ -207,8 +207,8 @@ func TestCreateInvalidTestExecution(t *testing.T) {
 	}
 }
 
-//TODO: Change this to actually update test execution
 func TestUpdateTestExecution(t *testing.T) {
+	t.Skip("https://github.com/PerfCake/PerfRepo/issues/95")
 	testIn := test.Test("test1")
 
 	testID, err := testClient.CreateTest(testIn)
@@ -222,7 +222,7 @@ func TestUpdateTestExecution(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.ExecutionDefault(testID)
+	testExecIn := test.DefaultExecution(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 
@@ -232,10 +232,6 @@ func TestUpdateTestExecution(t *testing.T) {
 	defer func() {
 		if err := testClient.DeleteTestExecution(testExecID); err != nil {
 			t.Fatal(err.Error())
-		}
-		if _, err = testClient.GetTestExecution(testExecID); err == nil ||
-			!strings.Contains(err.Error(), "doesn't exist") {
-			t.Fatalf("Test execution not deleted")
 		}
 	}()
 
@@ -247,16 +243,49 @@ func TestUpdateTestExecution(t *testing.T) {
 
 	if testExecOut.ID != testExecID ||
 		testExecOut.Name != testExecIn.Name ||
-		testExecOut.Started.String() != testExecIn.Started.String() ||
-		!paramsEqual(testExecOut, testExecIn) ||
-		!tagsEqual(testExecOut, testExecIn) ||
-		!valuesEqual(testExecOut, testExecIn, "metric1", "metric2") ||
-		firstMetricByParam(testExecOut, "multimetric",
-			apis.ValueParameter{Name: "client", Value: "1"}) != 20.0 ||
-		firstMetricByParam(testExecOut, "multimetric",
-			apis.ValueParameter{Name: "client", Value: "2"}) != 40.0 {
+		testExecOut.Comment != testExecIn.Comment {
 		t.Fatalf("The returned test execution: %+v does not match the original %+v",
 			testExecOut, testExecIn)
+	}
+
+	testExec2In := test.DefaultExecution(testID)
+	testExec2In.ID = testExecID
+	testExec2In.Name = "updated name"
+	testExec2In.Comment = "updated comment"
+
+	_, err = testClient.UpdateTestExecution(testExec2In)
+	if err != nil {
+		t.Fatal("Failed to update TestExecution", err.Error())
+	}
+
+	testExec2Out, err := testClient.GetTestExecution(testExecID)
+	if err != nil {
+		t.Fatal("Failed to get TestExecution", err.Error())
+	}
+
+	if testExec2Out.ID != testExecID || //still the original ID expected
+		testExec2Out.Name != testExec2In.Name ||
+		testExec2Out.Comment != testExec2In.Comment {
+		t.Fatalf("The test execution not updated properly: %+v", testExec2Out)
+	}
+
+	reducedTestExecIn := test.ReducedExecution(testID)
+	reducedTestExecIn.ID = testExecID
+
+	_, err = testClient.UpdateTestExecution(reducedTestExecIn)
+	if err != nil {
+		t.Fatal("Failed to update TestExecution", err.Error())
+	}
+
+	reducedTestExecOut, err := testClient.GetTestExecution(testExecID)
+	if err != nil {
+		t.Fatal("Failed to get TestExecution", err.Error())
+	}
+
+	if reducedTestExecOut.ID != testExecID ||
+		!paramsEqual(reducedTestExecOut, reducedTestExecIn) ||
+		!tagsEqual(reducedTestExecOut, reducedTestExecIn) {
+		t.Fatalf("The test execution not updated properly %+v", reducedTestExecOut)
 	}
 }
 
@@ -392,7 +421,7 @@ func TestCreateGetAttachment(t *testing.T) {
 		}
 	}()
 
-	testExecIn := test.ExecutionDefault(testID)
+	testExecIn := test.DefaultExecution(testID)
 
 	testExecID, err := testClient.CreateTestExecution(testExecIn)
 

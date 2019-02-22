@@ -73,7 +73,7 @@ func initSeed() func() {
 }
 
 // Execution creates a new TestExecution object referencing given test via testId
-func ExecutionDefault(testID int64) *apis.TestExecution {
+func DefaultExecution(testID int64) *apis.TestExecution {
 	started := &apis.JaxbTime{time.Now()}
 	params := []apis.TestExecutionParameter{
 		{
@@ -138,6 +138,43 @@ func Execution(testID int64, started *apis.JaxbTime, params []apis.TestExecution
 	}
 	for _, tag := range tags {
 		testExec.Tags = append(testExec.Tags, tag)
+	}
+	return &testExec
+}
+
+func ReducedExecution(testID int64) *apis.TestExecution {
+	salt := RandomString()
+	testExec := apis.TestExecution{
+		TestID:  testID,
+		Name:    "reduced execution" + salt,
+		Started: &apis.JaxbTime{time.Now()},
+		Values: []apis.Value{
+			{
+				MetricName: "metric1",
+				Result:     7.0,
+			},
+			{
+				MetricName: "multimetric",
+				Result:     77.0,
+				Parameters: []apis.ValueParameter{
+					{
+						Name:  "client",
+						Value: "30",
+					},
+				},
+			},
+		},
+		Parameters: []apis.TestExecutionParameter{
+			{
+				Name:  "param1",
+				Value: "differentValue",
+			},
+		},
+		Tags: []apis.Tag{
+			{
+				Name: "differentTag",
+			},
+		},
 	}
 	return &testExec
 }
