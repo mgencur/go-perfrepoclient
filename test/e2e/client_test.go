@@ -112,7 +112,7 @@ func TestAddGetMetric(t *testing.T) {
 	}
 
 	newMetric := &apis.Metric{
-		Comparator:  "LB",
+		Comparator:  apis.LBComparator,
 		Name:        "metric3",
 		Description: "this is a test metric 3",
 	}
@@ -369,7 +369,9 @@ func TestSearchTestExecutions(t *testing.T) {
 	// create 1. search
 	ids := []int64{testExec1ID, testExec2ID}
 	criteria := &apis.TestExecutionSearch{
-		IDS: &ids,
+		IDS:         &ids,
+		GroupFilter: apis.AllGroupFilter,
+		OrderBy:     apis.NameAscOrderBy,
 	}
 	executions, err := testClient.SearchTestExecutions(criteria)
 
@@ -550,8 +552,8 @@ func TestCreateDeleteReportPermission(t *testing.T) {
 	}
 
 	if len(reportOut.Permissions) != 1 ||
-		reportOut.Permissions[0].AccessLevel != "GROUP" ||
-		reportOut.Permissions[0].AccessType != "WRITE" {
+		reportOut.Permissions[0].AccessLevel != apis.GroupAccessLevel ||
+		reportOut.Permissions[0].AccessType != apis.WriteAccessType {
 		t.Fatal("Default permissions not applied")
 	}
 
@@ -560,8 +562,8 @@ func TestCreateDeleteReportPermission(t *testing.T) {
 		//the permission is a standalone message and when it's part of a report
 		XMLName:     xml.Name{"", "report-permission"},
 		ReportID:    reportOut.ID,
-		AccessLevel: "PUBLIC",
-		AccessType:  "READ",
+		AccessLevel: apis.PublicAccessLevel,
+		AccessType:  apis.ReadAccessType,
 	}
 
 	err = testClient.CreateReportPermission(permission)
