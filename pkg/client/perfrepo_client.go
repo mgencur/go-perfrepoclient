@@ -68,47 +68,46 @@ func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (id int64,
 // GetMetric returns an existing Metric by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetMetric(id int64) (*apis.Metric, error) {
 	url := fmt.Sprintf("%s/metric/%d", c.url, id)
-	req, err := c.httpGet(url)
+	entity, err := c.getEntity(url)
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Metric with given location %s doesn't exist", url)
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		var m apis.Metric
-		err = xml.Unmarshal(body, &m)
-		return &m, err
-	default:
-		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Metric")
-	}
+	var m apis.Metric
+	err = xml.Unmarshal(entity, &m)
+	return &m, errors.Wrap(err, "Failed to get metric")
 }
 
 // GetTest returns an existing test by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 	url := fmt.Sprintf("%s/test/id/%d", c.url, id)
-	return c.getTestByURL(url)
+	test, err := c.getTest(url)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to get test by id")
+	}
+	return test, nil
 }
 
 // GetTestByUID returns an existing test by UID identifier or nil if there's an error
 func (c *PerfRepoClient) GetTestByUID(uid string) (*apis.Test, error) {
 	url := fmt.Sprintf("%s/test/uid/%s", c.url, uid)
-	return c.getTestByURL(url)
+	test, err := c.getTest(url)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to get test by uid")
+	}
+	return test, nil
 }
 
-func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
+func (c *PerfRepoClient) getTest(url string) (*apis.Test, error) {
+	entity, err := c.getEntity(url)
+	if err != nil {
+		return nil, err
+	}
+	var test apis.Test
+	err = xml.Unmarshal(entity, &test)
+	return &test, err
+}
+
+func (c *PerfRepoClient) getEntity(url string) ([]byte, error) {
 	req, err := c.httpGet(url)
 	if err != nil {
 		return nil, err
@@ -123,17 +122,11 @@ func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Test with given location %s doesn't exist", url)
+			return nil, fmt.Errorf("Entity with given location %s doesn't exist", url)
 		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		var t apis.Test
-		err = xml.Unmarshal(body, &t)
-		return &t, err
+		return ioutil.ReadAll(resp.Body)
 	default:
-		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Test")
+		return nil, errors.Wrap(errMsg(req, resp), "Error while getting entity")
 	}
 }
 
@@ -141,13 +134,13 @@ func (c *PerfRepoClient) getTestByURL(url string) (*apis.Test, error) {
 // succeeds.
 func (c *PerfRepoClient) DeleteTest(id int64) error {
 	deleteTestURL := fmt.Sprintf("%s/test/id/%d", c.url, id)
-	if err := c.deleteByURL(deleteTestURL); err != nil {
+	if err := c.delete(deleteTestURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete test with id %d", id))
 	}
 	return nil
 }
 
-func (c *PerfRepoClient) deleteByURL(url string) error {
+func (c *PerfRepoClient) delete(url string) error {
 	req, err := c.httpDelete(url)
 	if err != nil {
 		return err
@@ -226,39 +219,20 @@ func responseBodyAsInt(resp *http.Response) (int64, error) {
 // GetTestExecution returns an existing test execution by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTestExecution(id int64) (*apis.TestExecution, error) {
 	url := fmt.Sprintf("%s/testExecution/%d", c.url, id)
-	req, err := c.httpGet(url)
+	entity, err := c.getEntity(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to get metric")
 	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Test execution with given location %s doesn't exist", url)
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		var t apis.TestExecution
-		err = xml.Unmarshal(body, &t)
-		return &t, err
-	default:
-		return nil, errors.Wrap(errMsg(req, resp), "Error while getting TestExecution")
-	}
+	var t apis.TestExecution
+	err = xml.Unmarshal(entity, &t)
+	return &t, err
 }
 
 // DeleteTestExecution deletes the given test execution from the PerfRepo database.
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
 	deleteTestExecURL := fmt.Sprintf("%s/testExecution/%d", c.url, id)
-	if err := c.deleteByURL(deleteTestExecURL); err != nil {
+	if err := c.delete(deleteTestExecURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete test execution with id %d", id))
 	}
 	return nil
@@ -395,7 +369,7 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (id int64, err error)
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteReport(id int64) error {
 	deleteReportURL := fmt.Sprintf("%s/report/id/%d", c.url, id)
-	if err := c.deleteByURL(deleteReportURL); err != nil {
+	if err := c.delete(deleteReportURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete report with id %d", id))
 	}
 	return nil
@@ -404,32 +378,13 @@ func (c *PerfRepoClient) DeleteReport(id int64) error {
 // GetReport returns an existing Report by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetReport(id int64) (*apis.Report, error) {
 	url := fmt.Sprintf("%s/report/id/%d", c.url, id)
-	req, err := c.httpGet(url)
+	entity, err := c.getEntity(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to get report")
 	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Report with given location %s doesn't exist", url)
-		}
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		var t apis.Report
-		err = xml.Unmarshal(body, &t)
-		return &t, err
-	default:
-		return nil, errors.Wrap(errMsg(req, resp), "Error while getting Report")
-	}
+	var r apis.Report
+	err = xml.Unmarshal(entity, &r)
+	return &r, err
 }
 
 // CreateReportPermission adds a new permission to an existing report. Returns
@@ -488,6 +443,17 @@ func (c *PerfRepoClient) DeleteReportPermission(permission *apis.Permission) err
 		return errors.Wrap(errMsg(req, resp), "Error while deleting permission")
 	}
 	return nil
+}
+
+// GetServerVersion returns the server version
+func (c *PerfRepoClient) GetServerVersion() (string, error) {
+	url := c.url + "/info/version"
+	entity, err := c.getEntity(url)
+	if err != nil {
+		return "", errors.Wrap(err, "Failed to get server version")
+	}
+	version := string(entity)
+	return version, nil
 }
 
 func (c *PerfRepoClient) httpGet(url string) (*http.Request, error) {
