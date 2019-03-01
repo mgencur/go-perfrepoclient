@@ -25,17 +25,17 @@ const (
 // PerfRepoClient has methods for communicating with a remote PerfRepo instance via
 // REST interface
 type PerfRepoClient struct {
-	client *http.Client
-	url    string
-	auth   string
+	Client *http.Client
+	URL    string
+	Auth   string
 }
 
 // NewPerfRepoClient creates a new PerfRepoClient
 func NewPerfRepoClient(url, username, password string) *PerfRepoClient {
 	client := &PerfRepoClient{
-		client: &http.Client{},
-		url:    url + "/rest",
-		auth:   base64.StdEncoding.EncodeToString([]byte(username + ":" + password)),
+		Client: &http.Client{},
+		URL:    url + "/rest",
+		Auth:   "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password)),
 	}
 	return client
 }
@@ -43,7 +43,7 @@ func NewPerfRepoClient(url, username, password string) *PerfRepoClient {
 // CreateTest creates a new Test object in PerfRepo with subobjects. Returns
 // the ID of the Test record in database or returns 0 when there was an error.
 func (c *PerfRepoClient) CreateTest(test *apis.Test) (id int64, err error) {
-	createTestURL := c.url + "/test/create"
+	createTestURL := c.URL + "/test/create"
 	if id, err = c.postEntity(test, createTestURL); err != nil {
 		return 0, errors.Wrap(err, "Failed to create test")
 	}
@@ -58,7 +58,7 @@ func errMsg(req *http.Request, resp *http.Response) error {
 // AddMetric adds a new Metric to an existing Test. Returns
 // the ID of the Metric or returns 0 when there was an error.
 func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (id int64, err error) {
-	addMetricURL := fmt.Sprintf("%s/test/id/%d/addMetric", c.url, testID)
+	addMetricURL := fmt.Sprintf("%s/test/id/%d/addMetric", c.URL, testID)
 	if id, err = c.postEntity(metric, addMetricURL); err != nil {
 		return 0, errors.Wrap(err, "Failed to add metric")
 	}
@@ -67,8 +67,8 @@ func (c *PerfRepoClient) AddMetric(testID int64, metric *apis.Metric) (id int64,
 
 // GetMetric returns an existing Metric by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetMetric(id int64) (*apis.Metric, error) {
-	url := fmt.Sprintf("%s/metric/%d", c.url, id)
-	entity, err := c.getEntity(url)
+	URL := fmt.Sprintf("%s/metric/%d", c.URL, id)
+	entity, err := c.getEntity(URL)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +79,8 @@ func (c *PerfRepoClient) GetMetric(id int64) (*apis.Metric, error) {
 
 // GetTest returns an existing test by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
-	url := fmt.Sprintf("%s/test/id/%d", c.url, id)
-	test, err := c.getTest(url)
+	URL := fmt.Sprintf("%s/test/id/%d", c.URL, id)
+	test, err := c.getTest(URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get test by id")
 	}
@@ -89,16 +89,16 @@ func (c *PerfRepoClient) GetTest(id int64) (*apis.Test, error) {
 
 // GetTestByUID returns an existing test by UID identifier or nil if there's an error
 func (c *PerfRepoClient) GetTestByUID(uid string) (*apis.Test, error) {
-	url := fmt.Sprintf("%s/test/uid/%s", c.url, uid)
-	test, err := c.getTest(url)
+	URL := fmt.Sprintf("%s/test/uid/%s", c.URL, uid)
+	test, err := c.getTest(URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get test by uid")
 	}
 	return test, nil
 }
 
-func (c *PerfRepoClient) getTest(url string) (*apis.Test, error) {
-	entity, err := c.getEntity(url)
+func (c *PerfRepoClient) getTest(URL string) (*apis.Test, error) {
+	entity, err := c.getEntity(URL)
 	if err != nil {
 		return nil, err
 	}
@@ -107,13 +107,13 @@ func (c *PerfRepoClient) getTest(url string) (*apis.Test, error) {
 	return &test, err
 }
 
-func (c *PerfRepoClient) getEntity(url string) ([]byte, error) {
-	req, err := c.httpGet(url)
+func (c *PerfRepoClient) getEntity(URL string) ([]byte, error) {
+	req, err := c.httpGet(URL)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (c *PerfRepoClient) getEntity(url string) ([]byte, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Entity with given location %s doesn't exist", url)
+			return nil, fmt.Errorf("Entity with given location %s doesn't exist", URL)
 		}
 		return ioutil.ReadAll(resp.Body)
 	default:
@@ -133,20 +133,20 @@ func (c *PerfRepoClient) getEntity(url string) ([]byte, error) {
 // DeleteTest deletes the given test from the PerfRepo database. Returns nil when the request
 // succeeds.
 func (c *PerfRepoClient) DeleteTest(id int64) error {
-	deleteTestURL := fmt.Sprintf("%s/test/id/%d", c.url, id)
+	deleteTestURL := fmt.Sprintf("%s/test/id/%d", c.URL, id)
 	if err := c.delete(deleteTestURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete test with id %d", id))
 	}
 	return nil
 }
 
-func (c *PerfRepoClient) delete(url string) error {
-	req, err := c.httpDelete(url)
+func (c *PerfRepoClient) delete(URL string) error {
+	req, err := c.httpDelete(URL)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return errMsg(req, resp)
 	}
@@ -161,7 +161,7 @@ func (c *PerfRepoClient) delete(url string) error {
 // CreateTestExecution creates a new TestExecution object in PerfRepo with subobjects. Returns
 // the ID of the TestExecution record in database or 0 in the event of error
 func (c *PerfRepoClient) CreateTestExecution(testExec *apis.TestExecution) (id int64, err error) {
-	createTestExecURL := c.url + "/testExecution/create"
+	createTestExecURL := c.URL + "/testExecution/create"
 	if id, err = c.postEntity(testExec, createTestExecURL); err != nil {
 		err = errors.Wrap(err, "Failed to create test execution")
 	}
@@ -174,7 +174,7 @@ func (c *PerfRepoClient) UpdateTestExecution(testExec *apis.TestExecution) (id i
 	if testExec == nil || testExec.ID == 0 {
 		id, err = 0, errors.New("Invalid test execution for update")
 	}
-	updateTestExecURL := fmt.Sprintf("%s/testExecution/update/%d", c.url, testExec.ID)
+	updateTestExecURL := fmt.Sprintf("%s/testExecution/update/%d", c.URL, testExec.ID)
 	if id, err = c.postEntity(testExec, updateTestExecURL); err != nil {
 		err = errors.Wrap(err, "Failed to update test execution")
 	}
@@ -183,18 +183,18 @@ func (c *PerfRepoClient) UpdateTestExecution(testExec *apis.TestExecution) (id i
 
 // postEntity sends a HTTP post with the given entity masrhalled as a body of the request.
 // Returns the id of the entity record in database or 0 in the event of error
-func (c *PerfRepoClient) postEntity(entity interface{}, url string) (int64, error) {
+func (c *PerfRepoClient) postEntity(entity interface{}, URL string) (int64, error) {
 	marshalled, err := xml.MarshalIndent(entity, "", "    ")
 	if err != nil {
 		return 0, err
 	}
 
-	req, err := c.httpPost(url, marshalled)
+	req, err := c.httpPost(URL, marshalled)
 	if err != nil {
 		return 0, err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -218,8 +218,8 @@ func responseBodyAsInt(resp *http.Response) (int64, error) {
 
 // GetTestExecution returns an existing test execution by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetTestExecution(id int64) (*apis.TestExecution, error) {
-	url := fmt.Sprintf("%s/testExecution/%d", c.url, id)
-	entity, err := c.getEntity(url)
+	URL := fmt.Sprintf("%s/testExecution/%d", c.URL, id)
+	entity, err := c.getEntity(URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get metric")
 	}
@@ -231,7 +231,7 @@ func (c *PerfRepoClient) GetTestExecution(id int64) (*apis.TestExecution, error)
 // DeleteTestExecution deletes the given test execution from the PerfRepo database.
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
-	deleteTestExecURL := fmt.Sprintf("%s/testExecution/%d", c.url, id)
+	deleteTestExecURL := fmt.Sprintf("%s/testExecution/%d", c.URL, id)
 	if err := c.delete(deleteTestExecURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete test execution with id %d", id))
 	}
@@ -240,7 +240,7 @@ func (c *PerfRepoClient) DeleteTestExecution(id int64) error {
 
 // SearchTestExecutions searches for test executions based on criteria passed as the argument.
 func (c *PerfRepoClient) SearchTestExecutions(criteria *apis.TestExecutionSearch) ([]apis.TestExecution, error) {
-	searchTestExecURL := c.url + "/testExecution/search"
+	searchTestExecURL := c.URL + "/testExecution/search"
 
 	marshalled, err := xml.MarshalIndent(criteria, "", "    ")
 	if err != nil {
@@ -252,7 +252,7 @@ func (c *PerfRepoClient) SearchTestExecutions(criteria *apis.TestExecutionSearch
 		return nil, err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -275,17 +275,17 @@ func (c *PerfRepoClient) SearchTestExecutions(criteria *apis.TestExecutionSearch
 // CreateAttachment creates a new attachment for a TestExecution identified by its ID.
 // Returns an ID of the attachment itself or error when the operation failed
 func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis.Attachment) (int64, error) {
-	createAttachmentURL := fmt.Sprintf("%s/testExecution/%d/addAttachment", c.url, testExecutionID)
+	createAttachmentURL := fmt.Sprintf("%s/testExecution/%d/addAttachment", c.URL, testExecutionID)
 
 	req, err := http.NewRequest(http.MethodPost, createAttachmentURL, attachment.File)
 	if err != nil {
 		return 0, err
 	}
-	req.Header.Add(authHeader, "Basic "+c.auth)
+	req.Header.Add(authHeader, c.Auth)
 	req.Header.Add(contentTypeHeader, attachment.ContentType)
 	req.Header.Add(targetFileHeader, attachment.TargetFileName)
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -301,13 +301,13 @@ func (c *PerfRepoClient) CreateAttachment(testExecutionID int64, attachment apis
 // GetAttachment returns an existing attachment with given ID or
 // error when the operation failed.
 func (c *PerfRepoClient) GetAttachment(id int64) (*apis.Attachment, error) {
-	url := fmt.Sprintf("%s/testExecution/attachment/%d", c.url, id)
-	req, err := c.httpGet(url)
+	URL := fmt.Sprintf("%s/testExecution/attachment/%d", c.URL, id)
+	req, err := c.httpGet(URL)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (c *PerfRepoClient) GetAttachment(id int64) (*apis.Attachment, error) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		if resp.ContentLength == 0 {
-			return nil, fmt.Errorf("Attachment with given location %s doesn't exist", url)
+			return nil, fmt.Errorf("Attachment with given location %s doesn't exist", URL)
 		}
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -345,7 +345,7 @@ func parseFileName(headerValue string) string {
 // CreateReport creates a new Report object in PerfRepo. Returns
 // the ID of the Report record in database or returns 0 when there was an error.
 func (c *PerfRepoClient) CreateReport(report *apis.Report) (id int64, err error) {
-	createReportURL := c.url + "/report/create"
+	createReportURL := c.URL + "/report/create"
 	if id, err = c.postEntity(report, createReportURL); err != nil {
 		return 0, errors.Wrap(err, "Failed to create report")
 	}
@@ -358,7 +358,7 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (id int64, err error)
 	if report == nil {
 		return 0, errors.New("Invalid Report")
 	}
-	updateReportURL := fmt.Sprintf("%s/report/update/%d", c.url, report.ID)
+	updateReportURL := fmt.Sprintf("%s/report/update/%d", c.URL, report.ID)
 	if id, err = c.postEntity(report, updateReportURL); err != nil {
 		return 0, errors.Wrap(err, "Failed to udpate report")
 	}
@@ -368,7 +368,7 @@ func (c *PerfRepoClient) UpdateReport(report *apis.Report) (id int64, err error)
 // DeleteReport deletes the given Report from the PerfRepo database.
 // Returns nil when the request succeeds.
 func (c *PerfRepoClient) DeleteReport(id int64) error {
-	deleteReportURL := fmt.Sprintf("%s/report/id/%d", c.url, id)
+	deleteReportURL := fmt.Sprintf("%s/report/id/%d", c.URL, id)
 	if err := c.delete(deleteReportURL); err != nil {
 		errors.Wrap(err, fmt.Sprintf("Failed to delete report with id %d", id))
 	}
@@ -377,8 +377,8 @@ func (c *PerfRepoClient) DeleteReport(id int64) error {
 
 // GetReport returns an existing Report by its identifier or nil if there's an error
 func (c *PerfRepoClient) GetReport(id int64) (*apis.Report, error) {
-	url := fmt.Sprintf("%s/report/id/%d", c.url, id)
-	entity, err := c.getEntity(url)
+	URL := fmt.Sprintf("%s/report/id/%d", c.URL, id)
+	entity, err := c.getEntity(URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get report")
 	}
@@ -390,19 +390,19 @@ func (c *PerfRepoClient) GetReport(id int64) (*apis.Report, error) {
 // CreateReportPermission adds a new permission to an existing report. Returns
 // nil if the operation was successful.
 func (c *PerfRepoClient) CreateReportPermission(permission *apis.Permission) error {
-	url := fmt.Sprintf("%s/report/id/%d/addPermission", c.url, permission.ReportID)
+	URL := fmt.Sprintf("%s/report/id/%d/addPermission", c.URL, permission.ReportID)
 
 	marshalled, err := xml.MarshalIndent(permission, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	req, err := c.httpPost(url, marshalled)
+	req, err := c.httpPost(URL, marshalled)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ func (c *PerfRepoClient) CreateReportPermission(permission *apis.Permission) err
 // DeleteReportPermission deletes the given permission from the PerfRepo database.
 // Returns nil when the request succeeds
 func (c *PerfRepoClient) DeleteReportPermission(permission *apis.Permission) error {
-	deletePermissionURL := fmt.Sprintf("%s/report/id/%d/deletePermission", c.url, permission.ReportID)
+	deletePermissionURL := fmt.Sprintf("%s/report/id/%d/deletePermission", c.URL, permission.ReportID)
 
 	marshalled, err := xml.MarshalIndent(permission, "", "    ")
 	if err != nil {
@@ -432,7 +432,7 @@ func (c *PerfRepoClient) DeleteReportPermission(permission *apis.Permission) err
 		return err
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return errMsg(req, resp)
 	}
@@ -447,8 +447,8 @@ func (c *PerfRepoClient) DeleteReportPermission(permission *apis.Permission) err
 
 // GetServerVersion returns the server version
 func (c *PerfRepoClient) GetServerVersion() (string, error) {
-	url := c.url + "/info/version"
-	entity, err := c.getEntity(url)
+	URL := c.URL + "/info/version"
+	entity, err := c.getEntity(URL)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to get server version")
 	}
@@ -461,7 +461,7 @@ func (c *PerfRepoClient) httpGet(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(authHeader, "Basic "+c.auth)
+	req.Header.Add(authHeader, c.Auth)
 	return req, nil
 }
 
@@ -470,7 +470,7 @@ func (c *PerfRepoClient) httpPost(url string, body []byte) (*http.Request, error
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(authHeader, "Basic "+c.auth)
+	req.Header.Add(authHeader, c.Auth)
 	req.Header.Add(contentTypeHeader, "text/xml")
 	return req, nil
 }
@@ -480,6 +480,6 @@ func (c *PerfRepoClient) httpDelete(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(authHeader, "Basic "+c.auth)
+	req.Header.Add(authHeader, c.Auth)
 	return req, nil
 }
