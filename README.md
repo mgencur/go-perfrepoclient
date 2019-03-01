@@ -20,36 +20,83 @@ Report Permissions and more.
 
 3) Call the API:
 
-    ```go
-    import "github.com/PerfCake/go-perfrepoclient/pkg/apis"
+    * Create a Test object:
 
-    //create a Test object
-    perfRepoTest := &apis.Test{
-		Name:        "TestName",
-		GroupID:     "perfrepouser",
-		UID:         "uniqueId123",
-		Description: "This is a test object",
-		Metrics: []apis.Metric{
-			apis.Metric{
-				Comparator:  "LB",
-				Name:        "metric1",
-				Description: "this is a test metric 1",
-			},
-		},
-	}
+        ```go
+        import "github.com/PerfCake/go-perfrepoclient/pkg/apis"
 
-    //call the API to actually send HTTP request to PerfRepo and create the Test
-    id, _ := testClient.CreateTest(perfRepoTest)
+        //create a Test object
+        perfRepoTest := &apis.Test{
+            Name:        "Product XYZ Performance",
+            GroupID:     "my_testing_group",
+            UID:         "product_xyz_performance",
+            Description: "Holds performance numbers for product XYZ",
+            Metrics: []apis.Metric{
+                apis.Metric{
+                    Comparator:  "LB",
+                    Name:        "avg_requests_per_second",
+                    Description: "Contains the average number of requests per second",
+                },
+            },
+        }
 
-    //print the id of the created test
-    fmt.Println("ID of the test:", id)
+        //call the API to actually send HTTP request to PerfRepo and create the Test
+        id, _ := testClient.CreateTest(perfRepoTest)
 
-    //retrieve the Test object by id
-    testBack, _ := testClient.GetTest(id)
+        //print the id of the created test
+        fmt.Println("ID of the test:", id)
 
-    //print the whole object including names of fields
-    fmt.Printf("Test object: %+v", testBack)
-    ```
+        //retrieve the Test object by id
+        testBack, _ := testClient.GetTest(id)
+
+        //print the whole object including names of fields
+        fmt.Printf("Test object: %+v", testBack)
+        ```
+
+    * Create a TestExecution object:
+
+        ```go
+        //create a TestExecution object
+        testExec := &apis.TestExecution{
+            TestID:  id, // the id that was returned by testClient.CreateTest() function
+            Name:    "Distributed Mode",
+            Started: &apis.JaxbTime{time.Now()},
+            // add parameters metadata (detailed information about the test execution)
+            Parameters: []apis.TestExecutionParameter{
+                {
+                    Name:  "git_branch",
+                    Value: "master",
+                },
+                {
+                    Name:  "git_commit",
+                    Value: "88159a3b498760e0d637b0720401e593cc1f1d5d",
+                },
+            },
+            // add tags metadata (test executions will be searchable through them)
+            Tags: []apis.Tag{
+                {
+                    Name: "distributed",
+                },
+                {
+                    Name: "size4",
+                },
+            },
+            // add actual values
+            Values: []apis.Value{
+                {
+                    MetricName: "avg_requests_per_second",
+                    Result:     120.0,
+                },
+            },
+        }
+
+        //call the API to actually send HTTP request to PerfRepo and create the TestExecution
+        testExecID, err := testClient.CreateTestExecution(testExec)
+
+        if err != nil {
+		    t.Fatal("Failed to create TestExecution", err.Error())
+	    }
+        ```
 
     Note: More examples in the `test/e2e` package.
 
