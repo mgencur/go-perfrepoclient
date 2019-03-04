@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PerfCake/go-perfrepoclient/pkg/apis"
+	"github.com/mgencur/go-perfrepoclient/pkg/apis"
 )
 
 const (

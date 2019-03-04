@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PerfCake/go-perfrepoclient/pkg/apis"
-	"github.com/PerfCake/go-perfrepoclient/pkg/client"
-	"github.com/PerfCake/go-perfrepoclient/test"
+	"github.com/mgencur/go-perfrepoclient/pkg/apis"
+	"github.com/mgencur/go-perfrepoclient/pkg/client"
+	"github.com/mgencur/go-perfrepoclient/test"
 )
 
 var testClient *client.PerfRepoClient
