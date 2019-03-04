@@ -15,7 +15,7 @@ Report Permissions and more.
     ```go
     import "github.com/PerfCake/go-perfrepoclient/pkg/client"
 
-    testClient := client.NewPerfRepoClient("http://perf.repo.url", "username", "password")
+    testClient := client.NewClient("http://perf.repo.url", "username", "password")
     ```
 
 3) Call the API:

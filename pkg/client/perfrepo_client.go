@@ -2,6 +2,8 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -30,12 +32,40 @@ type PerfRepoClient struct {
 	Auth   string
 }
 
-// NewPerfRepoClient creates a new PerfRepoClient
-func NewPerfRepoClient(url, username, password string) *PerfRepoClient {
+// NewClient creates a new PerfRepoClient
+func NewClient(url, username, password string) *PerfRepoClient {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	return newClientWithTransport(transport, url, username, password)
+}
+
+// NewSecuredClient creates a new PerfRepoClient vith CA (certification authority) setup for TLS.
+func NewSecuredClient(url, username, password, caFile string) (*PerfRepoClient, error) {
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to read CA file")
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+
+	return newClientWithTransport(transport, url, username, password), nil
+}
+
+func newClientWithTransport(transport *http.Transport, url, username, password string) *PerfRepoClient {
 	client := &PerfRepoClient{
-		Client: &http.Client{},
-		URL:    url + "/rest",
-		Auth:   "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password)),
+		Client: &http.Client{
+			Transport: transport,
+		},
+		URL:  url + "/rest",
+		Auth: "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password)),
 	}
 	return client
 }

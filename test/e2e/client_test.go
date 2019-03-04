@@ -18,7 +18,7 @@ import (
 var testClient *client.PerfRepoClient
 
 func TestMain(m *testing.M) {
-	testClient = client.NewPerfRepoClient(test.Flags.URL, test.Flags.User, test.Flags.Pass)
+	testClient = client.NewClient(test.Flags.URL, test.Flags.User, test.Flags.Pass)
 	// call flag.Parse() here if TestMain uses flags
 	os.Exit(m.Run())
 }
